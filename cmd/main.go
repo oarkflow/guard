@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,6 +13,7 @@ import (
 	"github.com/oarkflow/guard/pkg/config"
 	"github.com/oarkflow/guard/pkg/plugins"
 	"github.com/oarkflow/guard/pkg/plugins/actions"
+	"github.com/oarkflow/log"
 )
 
 func main() {
@@ -24,23 +24,23 @@ func main() {
 
 	// Ensure config file exists, create default if missing
 	if _, err := os.Stat(*configFile); os.IsNotExist(err) {
-		log.Printf("Config file %s does not exist, creating default...", *configFile)
+		log.Warn().Str("config_file", *configFile).Msg("Config file does not exist, creating default...")
 		cfg := config.CreateDefaultConfig()
 		if err := config.SaveConfig(cfg, *configFile); err != nil {
-			log.Fatalf("Failed to create default config file: %v", err)
+			log.Fatal().Err(err).Msg("Failed to create default config file")
 		}
-		log.Printf("Default config file created: %s", *configFile)
+		log.Info().Str("config_file", *configFile).Msg("Default config file created")
 	}
 
 	// Create application
 	app, err := guard.NewApplication(*configFile)
 	if err != nil {
-		log.Fatalf("Failed to create application: %v", err)
+		log.Fatal().Err(err).Msg("Failed to create application")
 	}
 
 	// Initialize application
 	if err := app.Initialize(); err != nil {
-		log.Fatalf("Failed to initialize application: %v", err)
+		log.Fatal().Err(err).Msg("Failed to initialize application")
 	}
 	setupDemoRoutes(app)
 	// Setup graceful shutdown
@@ -49,7 +49,7 @@ func main() {
 
 	go func() {
 		<-sigCh
-		log.Println("Received shutdown signal...")
+		log.Info().Msg("Received shutdown signal...")
 		app.Shutdown()
 		os.Exit(0)
 	}()
@@ -60,7 +60,7 @@ func main() {
 
 	// Start application
 	if err := app.Start(ctx); err != nil {
-		log.Fatalf("Failed to start application: %v", err)
+		log.Fatal().Err(err).Msg("Failed to start application")
 	}
 }
 

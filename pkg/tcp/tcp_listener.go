@@ -3,12 +3,12 @@ package tcp
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/oarkflow/guard/pkg/store"
+	"github.com/oarkflow/log"
 )
 
 // ProtectedListener wraps a net.Listener with TCP-level DDoS protection
@@ -31,7 +31,7 @@ type DefaultConnectionHandler struct{}
 
 func (h *DefaultConnectionHandler) HandleConnection(conn net.Conn, connInfo *TCPConnectionInfo) error {
 	// Default behavior - just close the connection after logging
-	log.Printf("Handling connection from %s with action %s", connInfo.IP, connInfo.Action.String())
+	log.Info().Str("ip", connInfo.IP).Str("action", connInfo.Action.String()).Msg("Handling connection")
 	return conn.Close()
 }
 
@@ -63,7 +63,7 @@ func (pl *ProtectedListener) Accept() (net.Conn, error) {
 		// Check connection with TCP protection
 		action, connInfo, err := pl.protection.CheckConnection(pl.ctx, conn.RemoteAddr())
 		if err != nil {
-			log.Printf("TCP protection check failed for %s: %v", conn.RemoteAddr(), err)
+			log.Error().Str("remote_addr", conn.RemoteAddr().String()).Err(err).Msg("TCP protection check failed")
 			conn.Close()
 			continue
 		}
@@ -80,29 +80,26 @@ func (pl *ProtectedListener) Accept() (net.Conn, error) {
 
 		case ActionDrop:
 			// Silent drop - close connection without response
-			log.Printf("Silently dropping connection from %s (connections: %d)",
-				connInfo.IP, connInfo.ConnectionCount)
+			log.Warn().Str("ip", connInfo.IP).Int64("connections", connInfo.ConnectionCount).Msg("Silently dropping connection")
 			conn.Close()
 			continue
 
 		case ActionTarpit:
 			// Tarpit - delay the connection
-			log.Printf("Tarpitting connection from %s (connections: %d)",
-				connInfo.IP, connInfo.ConnectionCount)
+			log.Warn().Str("ip", connInfo.IP).Int64("connections", connInfo.ConnectionCount).Msg("Tarpitting connection")
 			pl.wg.Add(1)
 			go pl.handleTarpitConnection(conn, connInfo)
 			continue
 
 		case ActionBlock:
 			// Block - close connection and log
-			log.Printf("Blocking connection from %s (connections: %d, failed: %d)",
-				connInfo.IP, connInfo.ConnectionCount, connInfo.FailedAttempts)
+			log.Warn().Str("ip", connInfo.IP).Int64("connections", connInfo.ConnectionCount).Int64("failed", connInfo.FailedAttempts).Msg("Blocking connection")
 			conn.Close()
 			continue
 
 		default:
 			// Unknown action, default to drop
-			log.Printf("Unknown action %s for %s, dropping", action.String(), conn.RemoteAddr())
+			log.Warn().Str("action", action.String()).Str("remote_addr", conn.RemoteAddr().String()).Msg("Unknown action, dropping")
 			conn.Close()
 			continue
 		}
@@ -124,7 +121,7 @@ func (pl *ProtectedListener) handleTarpitConnection(conn net.Conn, connInfo *TCP
 
 	// Handle the connection through the handler
 	if err := pl.connHandler.HandleConnection(tarpitConn, connInfo); err != nil {
-		log.Printf("Error handling tarpit connection from %s: %v", connInfo.IP, err)
+		log.Error().Str("ip", connInfo.IP).Err(err).Msg("Error handling tarpit connection")
 	}
 }
 
@@ -341,7 +338,7 @@ func (s *TCPServer) Serve() error {
 
 			// Handle the connection
 			if err := s.handler.HandleConnection(conn, connInfo); err != nil {
-				log.Printf("Connection handler error: %v", err)
+				log.Error().Err(err).Msg("Connection handler error")
 			}
 		}()
 	}

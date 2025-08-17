@@ -27,6 +27,9 @@ type SystemConfig struct {
 type ServerConfig struct {
 	Address        string        `json:"address"`
 	Port           int           `json:"port"`
+	TLSPort        int           `json:"tls_port"`
+	TLSCertFile    string        `json:"tls_cert_file"`
+	TLSKeyFile     string        `json:"tls_key_file"`
 	ReadTimeout    time.Duration `json:"read_timeout"`
 	WriteTimeout   time.Duration `json:"write_timeout"`
 	IdleTimeout    time.Duration `json:"idle_timeout"`

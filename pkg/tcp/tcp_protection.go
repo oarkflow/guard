@@ -3,12 +3,12 @@ package tcp
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/oarkflow/guard/pkg/store"
+	"github.com/oarkflow/log"
 )
 
 // TCPProtectionAction defines the action to take for a connection
@@ -165,7 +165,7 @@ func (tcp *TCPProtection) CheckConnection(ctx context.Context, remoteAddr net.Ad
 	connectionKey := fmt.Sprintf("tcp_conn:%s", ip)
 	connectionCount, err := tcp.store.IncrementWithTTL(ctx, connectionKey, 1, tcp.config.ConnectionWindow)
 	if err != nil {
-		log.Printf("Failed to increment connection count for %s: %v", ip, err)
+		log.Error().Str("ip", ip).Err(err).Msg("Failed to increment connection count")
 		connectionCount = 1
 	}
 
@@ -280,7 +280,7 @@ func (tcp *TCPProtection) RecordFailedConnection(ctx context.Context, remoteAddr
 	bruteForceKey := fmt.Sprintf("tcp_brute:%s", ip)
 	_, err = tcp.store.IncrementWithTTL(ctx, bruteForceKey, 1, tcp.config.BruteForceWindow)
 	if err != nil {
-		log.Printf("Failed to increment brute force count for %s: %v", ip, err)
+		log.Error().Str("ip", ip).Err(err).Msg("Failed to increment brute force count")
 	}
 
 	return nil

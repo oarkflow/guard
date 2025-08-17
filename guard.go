@@ -3,13 +3,13 @@ package guard
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/oarkflow/log"
 
 	"github.com/oarkflow/guard/pkg/config"
 
@@ -69,9 +69,9 @@ func NewApplication(configFile string, opts ...Options) (*Application, error) {
 		// Create default config if file doesn't exist
 		cfg := config.CreateDefaultConfig()
 		if err := config.SaveConfig(cfg, configFile); err != nil {
-			log.Printf("Warning: Could not save default config: %v", err)
+			log.Warn().Err(err).Msg("Could not save default config")
 		}
-		log.Printf("Created default configuration file: %s", configFile)
+		log.Info().Str("config_file", configFile).Msg("Created default configuration file")
 
 		// Reload the config manager with the new file
 		if err := configManager.LoadInitialConfig(); err != nil {
@@ -118,7 +118,7 @@ func NewApplication(configFile string, opts ...Options) (*Application, error) {
 			IdleTimeout:  cfg.Server.IdleTimeout,
 			BodyLimit:    cfg.Server.BodyLimit,
 			ErrorHandler: func(c *fiber.Ctx, err error) error {
-				log.Printf("Request error: %v", err)
+				log.Error().Err(err).Msg("Request error")
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 					"error": "Internal server error",
 				})
@@ -158,7 +158,7 @@ func NewApplication(configFile string, opts ...Options) (*Application, error) {
 
 // Initialize initializes the application components
 func (app *Application) Initialize() error {
-	log.Println("Initializing application components...")
+	log.Info().Msg("Initializing application components...")
 
 	// Register built-in plugins
 	if err := app.registerBuiltinPlugins(); err != nil {
@@ -171,7 +171,7 @@ func (app *Application) Initialize() error {
 	// Setup routes
 	app.setupRoutes()
 
-	log.Println("Application initialized successfully")
+	log.Info().Msg("Application initialized successfully")
 	return nil
 }
 
@@ -541,7 +541,7 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 
 		// Handle processing errors
 		if result.Error != nil {
-			log.Printf("Rule engine error: %v", result.Error)
+			log.Error().Err(result.Error).Msg("Rule engine error")
 			// Continue with request based on failure mode
 			cfg := app.configManager.GetConfig()
 			if cfg.Engine.FailureMode == "deny" {
@@ -554,7 +554,7 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 		// Check if request should be blocked
 		if !result.Allowed {
 			// Log the block
-			log.Printf("Request blocked from %s: %v", reqCtx.IP, result.Detections)
+			log.Warn().Str("ip", reqCtx.IP).Interface("detections", result.Detections).Msg("Request blocked")
 
 			// Return appropriate response based on highest severity action
 			for _, action := range result.Actions {
@@ -649,21 +649,18 @@ func (app *Application) createTCPProtectionMiddleware() fiber.Handler {
 
 		case tcp.ActionDrop:
 			// Silent drop - close connection without response
-			log.Printf("Silently dropping HTTP request from %s (connections: %d)",
-				connInfo.IP, connInfo.ConnectionCount)
+			log.Warn().Str("ip", connInfo.IP).Int64("connections", connInfo.ConnectionCount).Msg("Silently dropping HTTP request")
 			return c.SendStatus(fiber.StatusNoContent)
 
 		case tcp.ActionTarpit:
 			// Tarpit - delay the response
-			log.Printf("Tarpitting HTTP request from %s (connections: %d)",
-				connInfo.IP, connInfo.ConnectionCount)
+			log.Warn().Str("ip", connInfo.IP).Int64("connections", connInfo.ConnectionCount).Msg("Tarpitting HTTP request")
 			time.Sleep(app.tcpConfig.TarpitDelay)
 			return c.Next()
 
 		case tcp.ActionBlock:
 			// Block - return error response
-			log.Printf("Blocking HTTP request from %s (connections: %d, failed: %d)",
-				connInfo.IP, connInfo.ConnectionCount, connInfo.FailedAttempts)
+			log.Warn().Str("ip", connInfo.IP).Int64("connections", connInfo.ConnectionCount).Int64("failed", connInfo.FailedAttempts).Msg("Blocking HTTP request")
 
 			response := fiber.Map{
 				"error":            "Request blocked by TCP-level DDoS protection",
@@ -680,7 +677,7 @@ func (app *Application) createTCPProtectionMiddleware() fiber.Handler {
 
 		default:
 			// Unknown action, default to allow
-			log.Printf("Unknown TCP action %s for %s, allowing", action.String(), c.IP())
+			log.Warn().Str("action", action.String()).Str("ip", c.IP()).Msg("Unknown TCP action, allowing")
 			return c.Next()
 		}
 	}
@@ -836,45 +833,80 @@ func (app *Application) Start(ctx context.Context) error {
 	cfg := app.configManager.GetConfig()
 	address := fmt.Sprintf("%s:%d", cfg.Server.Address, cfg.Server.Port)
 
-	log.Printf("🛡️  DDoS Protection System v2.0 starting on %s", address)
-	log.Printf("📊 Metrics available at http://%s/metrics", address)
-	log.Printf("🔧 Health check at http://%s/health", address)
+	log.Info().Msg("🛡️  DDoS Protection System v2.0 starting on " + address)
+	log.Info().Msgf("📊 Metrics available at http://%s/metrics", address)
+	log.Info().Msgf("🔧 Health check at http://%s/health", address)
 
 	// Print plugin information
 	metadata := app.registry.GetAllPluginMetadata()
-	log.Printf("📦 Loaded %d plugins:", len(metadata))
+	log.Info().Int("plugin_count", len(metadata)).Msg("📦 Loaded plugins")
 	for name, meta := range metadata {
-		log.Printf("   - %s v%s (%s)", name, meta.Version, meta.Type)
+		log.Info().Str("name", name).Str("version", meta.Version).Str("type", meta.Type).Msg("Plugin loaded")
 	}
 
 	// Start config watcher
 	if err := app.configManager.StartWatching(ctx); err != nil {
-		log.Printf("Warning: Failed to start config watcher: %v", err)
+		log.Warn().Err(err).Msg("Failed to start config watcher")
 	} else {
-		log.Println("📁 Config file watcher started")
+		log.Info().Msg("📁 Config file watcher started")
 	}
 
 	return app.fiberApp.Listen(address)
 }
 
+func (app *Application) StartTLS(ctx context.Context) error {
+	cfg := app.configManager.GetConfig()
+	address := fmt.Sprintf("%s:%d", cfg.Server.Address, cfg.Server.TLSPort)
+
+	log.Info().Msg("🛡️  DDoS Protection System v2.0 starting on " + address)
+	log.Info().Msgf("📊 Metrics available at https://%s/metrics", address)
+	log.Info().Msgf("🔧 Health check at https://%s/health", address)
+
+	// Print plugin information
+	metadata := app.registry.GetAllPluginMetadata()
+	log.Info().Int("plugin_count", len(metadata)).Msg("📦 Loaded plugins")
+	for name, meta := range metadata {
+		log.Info().
+			Str("name", name).
+			Str("version", meta.Version).
+			Str("type", meta.Type).
+			Msg("Plugin loaded")
+	}
+
+	// Start config watcher
+	if err := app.configManager.StartWatching(ctx); err != nil {
+		log.Warn().Err(err).Msg("Failed to start config watcher")
+	} else {
+		log.Info().Msg("📁 Config file watcher started")
+	}
+	// Ensure TLS cert and key files are provided
+	if cfg.Server.TLSCertFile == "" || cfg.Server.TLSKeyFile == "" {
+		log.Error().Msg("TLS certificate and key files must be provided")
+		return fmt.Errorf("TLS certificate and key files must be provided")
+	}
+
+	// Start Fiber with TLS
+	return app.fiberApp.ListenTLS(address, cfg.Server.TLSCertFile, cfg.Server.TLSKeyFile)
+}
+
 // Shutdown gracefully shuts down the application
 func (app *Application) Shutdown() error {
-	log.Println("Shutting down application...")
+	log.Info().Msg("Shutting down application...")
 
 	// Stop config watcher
 	app.configManager.StopWatching()
 
 	// Shutdown rule engine
 	if err := app.ruleEngine.Shutdown(); err != nil {
-		log.Printf("Error shutting down rule engine: %v", err)
+		log.Error().Err(err).Msg("Error shutting down rule engine")
 	}
 
 	// Shutdown Fiber app
 	if err := app.fiberApp.Shutdown(); err != nil {
-		log.Printf("Error shutting down Fiber app: %v", err)
+		log.Error().Err(err).Msg("Error shutting down Fiber app")
 	}
 
-	log.Println("Application shutdown complete")
+	log.Info().Msg("Application shutdown complete")
 	return nil
 }
 
@@ -883,18 +915,18 @@ func (app *Application) handleConfigReload(newConfig *config.SystemConfig) error
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	log.Println("Handling configuration reload...")
+	log.Info().Msg("Handling configuration reload...")
 
 	// Update rule engine with new action rules
 	app.ruleEngine.UpdateConfig(newConfig.Engine)
 
 	// Re-register plugins with new configurations
 	if err := app.reloadPlugins(newConfig); err != nil {
-		log.Printf("Failed to reload plugins: %v", err)
+		log.Error().Err(err).Msg("Failed to reload plugins")
 		return err
 	}
 
-	log.Println("Configuration reload completed successfully")
+	log.Info().Msg("Configuration reload completed successfully")
 	return nil
 }
 
@@ -904,9 +936,9 @@ func (app *Application) reloadPlugins(cfg *config.SystemConfig) error {
 	for name, pluginConfig := range cfg.Plugins.Detectors {
 		if detector, exists := app.registry.GetDetector(name); exists {
 			if err := detector.Initialize(pluginConfig.Parameters); err != nil {
-				log.Printf("Failed to reinitialize detector %s: %v", name, err)
+				log.Error().Str("detector", name).Err(err).Msg("Failed to reinitialize detector")
 			} else {
-				log.Printf("Reloaded detector: %s", name)
+				log.Info().Str("detector", name).Msg("Reloaded detector")
 			}
 		}
 	}
@@ -915,9 +947,9 @@ func (app *Application) reloadPlugins(cfg *config.SystemConfig) error {
 	for name, pluginConfig := range cfg.Plugins.Actions {
 		if action, exists := app.registry.GetAction(name); exists {
 			if err := action.Initialize(pluginConfig.Parameters); err != nil {
-				log.Printf("Failed to reinitialize action %s: %v", name, err)
+				log.Error().Str("action", name).Err(err).Msg("Failed to reinitialize action")
 			} else {
-				log.Printf("Reloaded action: %s", name)
+				log.Info().Str("action", name).Msg("Reloaded action")
 			}
 		}
 	}
@@ -926,7 +958,7 @@ func (app *Application) reloadPlugins(cfg *config.SystemConfig) error {
 	// Note: We'll iterate through configured handlers since registry doesn't expose GetAllHandlers
 	for name := range cfg.Plugins.Handlers {
 		// We can't directly access handlers from registry, so we'll log the configuration update
-		log.Printf("Handler configuration updated: %s", name)
+		log.Info().Str("handler", name).Msg("Handler configuration updated")
 	}
 
 	return nil

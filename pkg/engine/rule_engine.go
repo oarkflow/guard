@@ -3,12 +3,12 @@ package engine
 import (
 	"context"
 	"fmt"
-	"log"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/oarkflow/guard/pkg/config"
+	"github.com/oarkflow/log"
 
 	"github.com/oarkflow/guard/pkg/events"
 	plugins2 "github.com/oarkflow/guard/pkg/plugins"
@@ -192,7 +192,7 @@ func (re *RuleEngine) ProcessRequest(ctx context.Context, reqCtx *plugins2.Reque
 	// Execute actions
 	for _, action := range actions {
 		if err := re.executeAction(processCtx, action, reqCtx, detections); err != nil {
-			log.Printf("Failed to execute action %s: %v", action, err)
+			log.Error().Str("action", action).Err(err).Msg("Failed to execute action")
 			re.mu.Lock()
 			re.metrics.Errors++
 			re.mu.Unlock()
@@ -242,7 +242,7 @@ func (re *RuleEngine) runDetections(ctx context.Context, reqCtx *plugins2.Reques
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
-					log.Printf("Detector %s panicked: %v", d.Name(), r)
+					log.Error().Str("detector", d.Name()).Interface("panic", r).Msg("Detector panicked")
 				}
 			}()
 
@@ -519,7 +519,7 @@ func (re *RuleEngine) UpdateConfig(config Config) {
 	re.config = config
 	newRuleCount := len(re.config.ActionRules)
 
-	log.Printf("Engine configuration updated: %d -> %d action rules", oldRuleCount, newRuleCount)
+	log.Info().Int("old_rule_count", oldRuleCount).Int("new_rule_count", newRuleCount).Msg("Engine configuration updated")
 }
 
 // AddActionRule adds a new action rule at runtime
@@ -535,7 +535,7 @@ func (re *RuleEngine) AddActionRule(rule config.ActionRule) error {
 	}
 
 	re.config.ActionRules = append(re.config.ActionRules, rule)
-	log.Printf("Added new action rule: '%s' (Priority: %d)", rule.Name, rule.Priority)
+	log.Info().Str("rule", rule.Name).Int("priority", rule.Priority).Msg("Added new action rule")
 	return nil
 }
 
@@ -552,7 +552,7 @@ func (re *RuleEngine) UpdateActionRule(ruleName string, updatedRule config.Actio
 			}
 
 			re.config.ActionRules[i] = updatedRule
-			log.Printf("Updated action rule: '%s'", ruleName)
+			log.Info().Str("rule", ruleName).Msg("Updated action rule")
 			return nil
 		}
 	}
@@ -569,7 +569,7 @@ func (re *RuleEngine) RemoveActionRule(ruleName string) error {
 		if rule.Name == ruleName {
 			// Remove the rule by slicing
 			re.config.ActionRules = append(re.config.ActionRules[:i], re.config.ActionRules[i+1:]...)
-			log.Printf("Removed action rule: '%s'", ruleName)
+			log.Info().Str("rule", ruleName).Msgf("Removed action rule")
 			return nil
 		}
 	}
@@ -589,7 +589,7 @@ func (re *RuleEngine) EnableActionRule(ruleName string, enabled bool) error {
 			if enabled {
 				status = "enabled"
 			}
-			log.Printf("Action rule '%s' %s", ruleName, status)
+			log.Info().Str("rule", ruleName).Str("status", status).Msg("Action rule status changed")
 			return nil
 		}
 	}
@@ -697,21 +697,21 @@ func (re *RuleEngine) isIPBlocked(ctx context.Context, ip string) (bool, map[str
 
 // Shutdown gracefully shuts down the rule engine
 func (re *RuleEngine) Shutdown() error {
-	log.Println("Shutting down rule engine...")
+	log.Info().Msg("Shutting down rule engine...")
 
 	// Shutdown plugin registry
 	if err := re.registry.Shutdown(); err != nil {
-		log.Printf("Error shutting down plugin registry: %v", err)
+		log.Error().Err(err).Msg("Error shutting down plugin registry")
 	}
 
 	// Shutdown event bus
 	if err := re.eventBus.Shutdown(); err != nil {
-		log.Printf("Error shutting down event bus: %v", err)
+		log.Error().Err(err).Msg("Error shutting down event bus")
 	}
 
 	// Close state store
 	if err := re.store.Close(); err != nil {
-		log.Printf("Error closing state store: %v", err)
+		log.Error().Err(err).Msg("Error closing state store")
 	}
 
 	return nil

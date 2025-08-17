@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	"github.com/oarkflow/guard/pkg/config"
+	"github.com/oarkflow/log"
 
 	"github.com/oarkflow/guard/pkg/engine"
 	"github.com/oarkflow/guard/pkg/events"
@@ -31,7 +31,7 @@ func main() {
 	storeFactory := store.NewStoreFactory()
 	stateStore, err := storeFactory.CreateStore(cfg.Store)
 	if err != nil {
-		log.Fatalf("Failed to create state store: %v", err)
+		log.Fatal().Err(err).Msg("Failed to create state store")
 	}
 	fmt.Printf("✅ State store created: %s\n", cfg.Store.Type)
 
@@ -64,7 +64,7 @@ func main() {
 		cfg.Plugins.Detectors["sql_injection_detector"],
 	)
 	if err != nil {
-		log.Fatalf("Failed to register SQL detector: %v", err)
+		log.Fatal().Err(err).Msg("Failed to register SQL detector")
 	}
 	fmt.Printf("  ✅ %s v%s registered\n", sqlDetector.Name(), sqlDetector.Version())
 
@@ -82,7 +82,7 @@ func main() {
 		cfg.Plugins.Detectors["rate_limit_detector"],
 	)
 	if err != nil {
-		log.Fatalf("Failed to register rate limit detector: %v", err)
+		log.Fatal().Err(err).Msg("Failed to register rate limit detector")
 	}
 	fmt.Printf("  ✅ %s v%s registered\n", rateLimitDetector.Name(), rateLimitDetector.Version())
 
@@ -100,7 +100,7 @@ func main() {
 		plugins.PluginConfig{Enabled: true, Priority: 100, Parameters: map[string]interface{}{}},
 	)
 	if err != nil {
-		log.Fatalf("Failed to register block action: %v", err)
+		log.Fatal().Err(err).Msg("Failed to register block action")
 	}
 	fmt.Printf("  ✅ %s v%s registered\n", blockAction.Name(), blockAction.Version())
 
@@ -118,7 +118,7 @@ func main() {
 		plugins.PluginConfig{Enabled: true, Priority: 90, Parameters: map[string]interface{}{}},
 	)
 	if err != nil {
-		log.Fatalf("Failed to register incremental block action: %v", err)
+		log.Fatal().Err(err).Msg("Failed to register incremental block action")
 	}
 	fmt.Printf("  ✅ %s v%s registered\n", incBlockAction.Name(), incBlockAction.Version())
 
@@ -136,7 +136,7 @@ func main() {
 		plugins.PluginConfig{Enabled: true, Priority: 80, Parameters: map[string]interface{}{}},
 	)
 	if err != nil {
-		log.Fatalf("Failed to register suspension action: %v", err)
+		log.Fatal().Err(err).Msg("Failed to register suspension action")
 	}
 	fmt.Printf("  ✅ %s v%s registered\n", suspensionAction.Name(), suspensionAction.Version())
 
@@ -154,7 +154,7 @@ func main() {
 		plugins.PluginConfig{Enabled: true, Priority: 70, Parameters: map[string]interface{}{}},
 	)
 	if err != nil {
-		log.Fatalf("Failed to register account suspend action: %v", err)
+		log.Fatal().Err(err).Msg("Failed to register account suspend action")
 	}
 	fmt.Printf("  ✅ %s v%s registered\n", accountSuspendAction.Name(), accountSuspendAction.Version())
 
@@ -172,7 +172,7 @@ func main() {
 		plugins.PluginConfig{Enabled: true, Priority: 60, Parameters: map[string]interface{}{}},
 	)
 	if err != nil {
-		log.Fatalf("Failed to register warning action: %v", err)
+		log.Fatal().Err(err).Msg("Failed to register warning action")
 	}
 	fmt.Printf("  ✅ %s v%s registered\n", warningAction.Name(), warningAction.Version())
 
@@ -190,7 +190,7 @@ func main() {
 		cfg.Plugins.Handlers["security_logger_handler"],
 	)
 	if err != nil {
-		log.Fatalf("Failed to register security logger: %v", err)
+		log.Fatal().Err(err).Msg("Failed to register security logger")
 	}
 	fmt.Printf("  ✅ %s registered\n", securityLogger.Name())
 
@@ -375,7 +375,7 @@ func main() {
 	// Cleanup
 	fmt.Println("\n🧹 Cleaning up...")
 	if err := ruleEngine.Shutdown(); err != nil {
-		log.Printf("Error during shutdown: %v", err)
+		log.Error().Err(err).Msg("Error during shutdown")
 	}
 
 	fmt.Println("\n✅ Demo completed successfully!")

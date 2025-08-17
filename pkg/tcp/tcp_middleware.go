@@ -2,11 +2,11 @@ package tcp
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/oarkflow/guard/pkg/store"
+	"github.com/oarkflow/log"
 )
 
 // TCPMiddleware provides TCP-level protection for HTTP servers
@@ -41,7 +41,7 @@ func (tm *TCPMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Check connection with TCP protection
 	action, connInfo, err := tm.protection.CheckConnection(r.Context(), remoteAddr)
 	if err != nil {
-		log.Printf("TCP protection check failed for %s: %v", r.RemoteAddr, err)
+		log.Error().Str("remote_addr", r.RemoteAddr).Err(err).Msg("TCP protection check failed")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -54,8 +54,7 @@ func (tm *TCPMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	case ActionDrop:
 		// Silent drop - close connection without response
-		log.Printf("Silently dropping HTTP request from %s (connections: %d)",
-			connInfo.IP, connInfo.ConnectionCount)
+		log.Warn().Str("ip", connInfo.IP).Int64("connections", connInfo.ConnectionCount).Msg("Silently dropping HTTP request")
 		// For HTTP, we can't truly "drop" silently, so we close the connection
 		if hj, ok := w.(http.Hijacker); ok {
 			conn, _, err := hj.Hijack()
@@ -69,15 +68,13 @@ func (tm *TCPMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	case ActionTarpit:
 		// Tarpit - delay the response
-		log.Printf("Tarpitting HTTP request from %s (connections: %d)",
-			connInfo.IP, connInfo.ConnectionCount)
+		log.Warn().Str("ip", connInfo.IP).Int64("connections", connInfo.ConnectionCount).Msg("Tarpitting HTTP request")
 		time.Sleep(tm.protection.config.TarpitDelay)
 		tm.next.ServeHTTP(w, r)
 
 	case ActionBlock:
 		// Block - return error response
-		log.Printf("Blocking HTTP request from %s (connections: %d, failed: %d)",
-			connInfo.IP, connInfo.ConnectionCount, connInfo.FailedAttempts)
+		log.Warn().Str("ip", connInfo.IP).Int64("connections", connInfo.ConnectionCount).Int64("failed", connInfo.FailedAttempts).Msg("Blocking HTTP request")
 
 		// Return detailed block information
 		blockInfo := map[string]interface{}{
@@ -114,7 +111,7 @@ func (tm *TCPMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		// Unknown action, default to block
-		log.Printf("Unknown TCP action %s for %s, blocking", action.String(), r.RemoteAddr)
+		log.Warn().Str("action", action.String()).Str("remote_addr", r.RemoteAddr).Msg("Unknown TCP action, blocking")
 		http.Error(w, "Request blocked", http.StatusTooManyRequests)
 	}
 

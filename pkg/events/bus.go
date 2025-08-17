@@ -3,11 +3,11 @@ package events
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/oarkflow/guard/pkg/plugins"
+	"github.com/oarkflow/log"
 )
 
 // EventBus manages event publishing and subscription
@@ -80,7 +80,7 @@ func (eb *EventBus) processEvent(event plugins.SecurityEvent) {
 		func(h plugins.EventHandler) {
 			defer func() {
 				if r := recover(); r != nil {
-					log.Printf("Event handler %s panicked: %v", h.Name(), r)
+					log.Error().Str("handler", h.Name()).Interface("panic", r).Msg("Event handler panicked")
 				}
 			}()
 
@@ -88,7 +88,7 @@ func (eb *EventBus) processEvent(event plugins.SecurityEvent) {
 			defer cancel()
 
 			if err := h.Handle(ctx, event); err != nil {
-				log.Printf("Event handler %s failed: %v", h.Name(), err)
+				log.Error().Str("handler", h.Name()).Err(err).Msg("Event handler failed")
 			}
 		}(handler)
 	}
@@ -120,7 +120,7 @@ func (eb *EventBus) Publish(event plugins.SecurityEvent) error {
 func (eb *EventBus) PublishAsync(event plugins.SecurityEvent) {
 	go func() {
 		if err := eb.Publish(event); err != nil {
-			log.Printf("Failed to publish event: %v", err)
+			log.Error().Err(err).Msg("Failed to publish event")
 		}
 	}()
 }
@@ -172,7 +172,7 @@ func (eb *EventBus) GetStats() map[string]any {
 
 // Shutdown gracefully shuts down the event bus
 func (eb *EventBus) Shutdown() error {
-	log.Println("Shutting down event bus...")
+	log.Info().Msg("Shutting down event bus...")
 
 	// Stop accepting new events
 	eb.cancel()
@@ -186,7 +186,7 @@ func (eb *EventBus) Shutdown() error {
 
 	select {
 	case <-done:
-		log.Printf("Event bus shutdown complete. Buffer had %d remaining events", len(eb.buffer))
+		log.Info().Int("remaining_events", len(eb.buffer)).Msg("Event bus shutdown complete")
 		return nil
 	case <-time.After(30 * time.Second):
 		return fmt.Errorf("shutdown timeout - %d events may be lost", len(eb.buffer))

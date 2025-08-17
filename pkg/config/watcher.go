@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/oarkflow/log"
 )
 
 // Watcher monitors configuration files for changes and triggers reloads
@@ -47,7 +48,7 @@ func (cw *Watcher) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to get initial mod time: %w", err)
 	}
 
-	log.Printf("Config watcher started for: %s", cw.configPath)
+	log.Info().Str("config_path", cw.configPath).Msg("Config watcher started")
 
 	// Start the watching goroutine
 	go cw.watchLoop(ctx)
@@ -66,7 +67,7 @@ func (cw *Watcher) Stop() {
 
 	cw.running = false
 	close(cw.stopChan)
-	log.Println("Config watcher stopped")
+	log.Info().Msg("Config watcher stopped")
 }
 
 // watchLoop is the main watching loop
@@ -82,7 +83,7 @@ func (cw *Watcher) watchLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := cw.checkForChanges(); err != nil {
-				log.Printf("Error checking for config changes: %v", err)
+				log.Error().Err(err).Msg("Error checking for config changes")
 			}
 		}
 	}
@@ -93,7 +94,7 @@ func (cw *Watcher) checkForChanges() error {
 	stat, err := os.Stat(cw.configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Printf("Config file %s no longer exists", cw.configPath)
+			log.Warn().Str("config_path", cw.configPath).Msg("Config file no longer exists")
 			return nil
 		}
 		return fmt.Errorf("failed to stat config file: %w", err)
@@ -104,10 +105,10 @@ func (cw *Watcher) checkForChanges() error {
 	cw.mu.RUnlock()
 
 	if stat.ModTime().After(lastMod) {
-		log.Printf("Config file %s has been modified, reloading...", cw.configPath)
+		log.Info().Str("config_path", cw.configPath).Msg("Config file has been modified, reloading...")
 
 		if err := cw.reloadConfig(); err != nil {
-			log.Printf("Failed to reload config: %v", err)
+			log.Error().Err(err).Msg("Failed to reload config")
 			return err
 		}
 
@@ -115,7 +116,7 @@ func (cw *Watcher) checkForChanges() error {
 		cw.lastModTime = stat.ModTime()
 		cw.mu.Unlock()
 
-		log.Println("Config reloaded successfully")
+		log.Info().Msg("Config reloaded successfully")
 	}
 
 	return nil
@@ -160,7 +161,7 @@ func (cw *Watcher) updateModTime() error {
 
 // ForceReload forces a configuration reload regardless of modification time
 func (cw *Watcher) ForceReload() error {
-	log.Println("Forcing config reload...")
+	log.Info().Msg("Forcing config reload...")
 	return cw.reloadConfig()
 }
 
@@ -244,7 +245,7 @@ func (cm *Manager) handleConfigReload(newConfig *SystemConfig) error {
 	// Notify all registered callbacks
 	for _, callback := range callbacks {
 		if err := callback(newConfig); err != nil {
-			log.Printf("Config reload callback failed: %v", err)
+			log.Error().Err(err).Msg("Config reload callback failed")
 			// Continue with other callbacks even if one fails
 		}
 	}
@@ -255,14 +256,13 @@ func (cm *Manager) handleConfigReload(newConfig *SystemConfig) error {
 // logConfigChanges logs what changed in the configuration
 func (cm *Manager) logConfigChanges(oldConfig, newConfig *SystemConfig) {
 	if oldConfig == nil {
-		log.Println("Initial configuration loaded")
+		log.Info().Msg("Initial configuration loaded")
 		return
 	}
 
 	// Check for action rule changes
 	if len(oldConfig.Engine.ActionRules) != len(newConfig.Engine.ActionRules) {
-		log.Printf("Action rules count changed: %d -> %d",
-			len(oldConfig.Engine.ActionRules), len(newConfig.Engine.ActionRules))
+		log.Info().Int("old_count", len(oldConfig.Engine.ActionRules)).Int("new_count", len(newConfig.Engine.ActionRules)).Msg("Action rules count changed")
 	}
 
 	// Log rule changes
@@ -274,10 +274,10 @@ func (cm *Manager) logConfigChanges(oldConfig, newConfig *SystemConfig) {
 	for _, newRule := range newConfig.Engine.ActionRules {
 		if oldRule, exists := oldRules[newRule.Name]; exists {
 			if !rulesEqual(oldRule, newRule) {
-				log.Printf("Action rule '%s' modified", newRule.Name)
+				log.Info().Str("rule", newRule.Name).Msg("Action rule modified")
 			}
 		} else {
-			log.Printf("New action rule added: '%s'", newRule.Name)
+			log.Info().Str("rule", newRule.Name).Msg("New action rule added")
 		}
 	}
 
@@ -289,7 +289,7 @@ func (cm *Manager) logConfigChanges(oldConfig, newConfig *SystemConfig) {
 
 	for _, oldRule := range oldConfig.Engine.ActionRules {
 		if _, exists := newRules[oldRule.Name]; !exists {
-			log.Printf("Action rule removed: '%s'", oldRule.Name)
+			log.Info().Str("rule", oldRule.Name).Msg("Action rule removed")
 		}
 	}
 }
@@ -374,12 +374,12 @@ func (cm *Manager) UpdateConfig(updater func(*SystemConfig) error) error {
 	// Notify all registered callbacks
 	for _, callback := range callbacks {
 		if err := callback(&newConfig); err != nil {
-			log.Printf("Config update callback failed: %v", err)
+			log.Error().Err(err).Msg("Config update callback failed")
 			// Continue with other callbacks even if one fails
 		}
 	}
 
-	log.Println("Configuration updated and saved successfully")
+	log.Info().Msg("Configuration updated and saved successfully")
 	return nil
 }
 
