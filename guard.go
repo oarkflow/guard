@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 
 	"github.com/oarkflow/guard/pkg/config"
@@ -26,20 +25,42 @@ import (
 
 // Application holds the main application components
 type Application struct {
-	configManager *config.Manager
-	registry      *plugins.PluginRegistry
-	eventBus      *events.EventBus
-	ruleEngine    *engine.RuleEngine
-	stateStore    store.StateStore
-	fiberApp      *fiber.App
-	tcpMiddleware *tcp.TCPMiddleware
-	tcpHandler    *tcp.TCPProtectionHandler
-	tcpConfig     tcp.TCPProtectionConfig
-	mu            sync.RWMutex
+	configManager        *config.Manager
+	registry             *plugins.PluginRegistry
+	eventBus             *events.EventBus
+	ruleEngine           *engine.RuleEngine
+	stateStore           store.StateStore
+	fiberApp             *fiber.App
+	tcpMiddleware        *tcp.TCPMiddleware
+	tcpHandler           *tcp.TCPProtectionHandler
+	tcpConfig            tcp.TCPProtectionConfig
+	enableTCPMiddleware  bool
+	enableDdosMiddleware bool
+	mu                   sync.RWMutex
+}
+
+type Options func(*Application)
+
+func WithApp(app *fiber.App) Options {
+	return func(a *Application) {
+		a.fiberApp = app
+	}
+}
+
+func WithTCPMiddleware(enable bool) Options {
+	return func(a *Application) {
+		a.enableTCPMiddleware = enable
+	}
+}
+
+func WithDdosMiddleware(enable bool) Options {
+	return func(a *Application) {
+		a.enableDdosMiddleware = enable
+	}
 }
 
 // NewApplication creates a new application instance
-func NewApplication(configFile string) (*Application, error) {
+func NewApplication(configFile string, opts ...Options) (*Application, error) {
 	// Create config manager
 	configManager := config.NewManager(configFile)
 
@@ -76,49 +97,60 @@ func NewApplication(configFile string) (*Application, error) {
 	// Create rule engine
 	ruleEngine := engine.NewRuleEngine(registry, eventBus, stateStore)
 
-	// Create Fiber app
-	fiberApp := fiber.New(fiber.Config{
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
-		IdleTimeout:  cfg.Server.IdleTimeout,
-		BodyLimit:    cfg.Server.BodyLimit,
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			log.Printf("Request error: %v", err)
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Internal server error",
-			})
-		},
-	})
-
-	// Create TCP protection middleware
-	tcpConfig := tcp.TCPProtectionConfig{
-		EnableTCPProtection:  cfg.TCPProtection.EnableTCPProtection,
-		ConnectionRateLimit:  cfg.TCPProtection.ConnectionRateLimit,
-		ConnectionWindow:     cfg.TCPProtection.ConnectionWindow,
-		SilentDropThreshold:  cfg.TCPProtection.SilentDropThreshold,
-		TarpitThreshold:      cfg.TCPProtection.TarpitThreshold,
-		TarpitDelay:          cfg.TCPProtection.TarpitDelay,
-		MaxTarpitConnections: cfg.TCPProtection.MaxTarpitConnections,
-		BruteForceThreshold:  cfg.TCPProtection.BruteForceThreshold,
-		BruteForceWindow:     cfg.TCPProtection.BruteForceWindow,
-		CleanupInterval:      cfg.TCPProtection.CleanupInterval,
-		WhitelistedIPs:       cfg.TCPProtection.WhitelistedIPs,
-		BlacklistedIPs:       cfg.TCPProtection.BlacklistedIPs,
+	app := &Application{
+		enableTCPMiddleware:  true,
+		enableDdosMiddleware: true,
+		configManager:        configManager,
+		registry:             registry,
+		eventBus:             eventBus,
+		ruleEngine:           ruleEngine,
+		stateStore:           stateStore,
+	}
+	for _, opt := range opts {
+		opt(app)
 	}
 
-	tcpMiddleware := tcp.NewTCPMiddleware(tcpConfig, stateStore, nil)
-	tcpHandler := tcp.NewTCPProtectionHandler(tcpMiddleware.GetProtection())
+	if app.fiberApp == nil {
+		// Create default Fiber app if not provided
+		app.fiberApp = fiber.New(fiber.Config{
+			ReadTimeout:  cfg.Server.ReadTimeout,
+			WriteTimeout: cfg.Server.WriteTimeout,
+			IdleTimeout:  cfg.Server.IdleTimeout,
+			BodyLimit:    cfg.Server.BodyLimit,
+			ErrorHandler: func(c *fiber.Ctx, err error) error {
+				log.Printf("Request error: %v", err)
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error": "Internal server error",
+				})
+			},
+		})
+		app.fiberApp.Use(recover.New())
+	}
 
-	app := &Application{
-		configManager: configManager,
-		registry:      registry,
-		eventBus:      eventBus,
-		ruleEngine:    ruleEngine,
-		stateStore:    stateStore,
-		fiberApp:      fiberApp,
-		tcpMiddleware: tcpMiddleware,
-		tcpHandler:    tcpHandler,
-		tcpConfig:     tcpConfig,
+	if app.enableTCPMiddleware {
+		tcpConfig := tcp.TCPProtectionConfig{
+			EnableTCPProtection:  cfg.TCPProtection.EnableTCPProtection,
+			ConnectionRateLimit:  cfg.TCPProtection.ConnectionRateLimit,
+			ConnectionWindow:     cfg.TCPProtection.ConnectionWindow,
+			SilentDropThreshold:  cfg.TCPProtection.SilentDropThreshold,
+			TarpitThreshold:      cfg.TCPProtection.TarpitThreshold,
+			TarpitDelay:          cfg.TCPProtection.TarpitDelay,
+			MaxTarpitConnections: cfg.TCPProtection.MaxTarpitConnections,
+			BruteForceThreshold:  cfg.TCPProtection.BruteForceThreshold,
+			BruteForceWindow:     cfg.TCPProtection.BruteForceWindow,
+			CleanupInterval:      cfg.TCPProtection.CleanupInterval,
+			WhitelistedIPs:       cfg.TCPProtection.WhitelistedIPs,
+			BlacklistedIPs:       cfg.TCPProtection.BlacklistedIPs,
+		}
+		tcpMiddleware := tcp.NewTCPMiddleware(tcpConfig, stateStore, nil)
+		tcpHandler := tcp.NewTCPProtectionHandler(tcpMiddleware.GetProtection())
+		app.tcpMiddleware = tcpMiddleware
+		app.tcpHandler = tcpHandler
+		app.fiberApp.Use(app.createTCPProtectionMiddleware())
+	}
+
+	if app.enableDdosMiddleware {
+		app.fiberApp.Use(app.ddosProtectionMiddleware())
 	}
 
 	return app, nil
@@ -136,14 +168,79 @@ func (app *Application) Initialize() error {
 	// Setup config reload callback
 	app.configManager.AddReloadCallback(app.handleConfigReload)
 
-	// Setup middleware
-	app.setupMiddleware()
-
 	// Setup routes
 	app.setupRoutes()
 
 	log.Println("Application initialized successfully")
 	return nil
+}
+
+func (app *Application) Use(middleware ...any) {
+	app.fiberApp.Use(middleware...)
+}
+
+func (app *Application) AddRoute(method, path string, handlers ...fiber.Handler) {
+	app.fiberApp.Add(method, path, handlers...)
+}
+
+func (app *Application) Static(prefix, root string, config ...fiber.Static) {
+	app.fiberApp.Static(prefix, root, config...)
+}
+
+func (app *Application) Get(path string, handlers ...fiber.Handler) {
+	app.fiberApp.Get(path, handlers...)
+}
+
+func (app *Application) Post(path string, handlers ...fiber.Handler) {
+	app.fiberApp.Post(path, handlers...)
+}
+
+func (app *Application) All(path string, handlers ...fiber.Handler) {
+	app.fiberApp.All(path, handlers...)
+}
+
+func (app *Application) Delete(path string, handlers ...fiber.Handler) {
+	app.fiberApp.Delete(path, handlers...)
+}
+
+func (app *Application) Patch(path string, handlers ...fiber.Handler) {
+	app.fiberApp.Patch(path, handlers...)
+}
+
+func (app *Application) Trace(path string, handlers ...fiber.Handler) {
+	app.fiberApp.Trace(path, handlers...)
+}
+
+func (app *Application) AddRouteGroup(prefix string, handlers ...fiber.Handler) fiber.Router {
+	return app.fiberApp.Group(prefix, handlers...)
+}
+
+func (app *Application) GetRegistry() *plugins.PluginRegistry {
+	return app.registry
+}
+
+func (app *Application) GetEventBus() *events.EventBus {
+	return app.eventBus
+}
+
+func (app *Application) GetRuleEngine() *engine.RuleEngine {
+	return app.ruleEngine
+}
+
+func (app *Application) GetStateStore() store.StateStore {
+	return app.stateStore
+}
+
+func (app *Application) GetFiberApp() *fiber.App {
+	return app.fiberApp
+}
+
+func (app *Application) GetTCPMiddleware() *tcp.TCPMiddleware {
+	return app.tcpMiddleware
+}
+
+func (app *Application) GetConfig() *config.Manager {
+	return app.configManager
 }
 
 // registerBuiltinPlugins registers the built-in plugins
@@ -411,49 +508,12 @@ func (app *Application) registerBuiltinPlugins() error {
 	return nil
 }
 
-// setupMiddleware sets up Fiber middleware
-func (app *Application) setupMiddleware() {
-	cfg := app.configManager.GetConfig()
-
-	// Recovery middleware
-	app.fiberApp.Use(recover.New())
-
-	// CORS middleware
-	if len(cfg.Security.AllowedOrigins) > 0 {
-		app.fiberApp.Use(cors.New(cors.Config{
-			AllowOrigins: cfg.Security.AllowedOrigins[0],
-			AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
-			AllowHeaders: "Origin,Content-Type,Accept,Authorization",
-		}))
-	}
-
-	// Security headers middleware
-	if cfg.Security.EnableSecurityHeaders {
-		app.fiberApp.Use(func(c *fiber.Ctx) error {
-			c.Set("X-Content-Type-Options", "nosniff")
-			c.Set("X-Frame-Options", "DENY")
-			c.Set("X-XSS-Protection", "1; mode=block")
-			c.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-			c.Set("Referrer-Policy", "strict-origin-when-cross-origin")
-			return c.Next()
-		})
-	}
-
-	// TCP-level DDoS protection middleware (first layer)
-	if app.tcpMiddleware != nil {
-		app.fiberApp.Use(app.createTCPProtectionMiddleware())
-	}
-
-	// Application-level DDoS protection middleware (second layer)
-	app.fiberApp.Use(app.ddosProtectionMiddleware())
-}
-
 // ddosProtectionMiddleware creates the DDoS protection middleware
 func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// Build request context
 		reqCtx := &plugins.RequestContext{
-			IP:            app.getRealIP(c),
+			IP:            app.GetRealIP(c),
 			UserAgent:     c.Get("User-Agent"),
 			Method:        c.Method(),
 			Path:          c.Path(),
@@ -641,7 +701,7 @@ func (a *tcpAddr) String() string {
 }
 
 // getRealIP extracts the real IP address from the request
-func (app *Application) getRealIP(c *fiber.Ctx) string {
+func (app *Application) GetRealIP(c *fiber.Ctx) string {
 	// Check X-Forwarded-For header
 	xff := c.Get("X-Forwarded-For")
 	if xff != "" {
@@ -769,350 +829,6 @@ func (app *Application) setupRoutes() {
 			return c.JSON(fiber.Map{"message": fmt.Sprintf("IP %s removed from blacklist", ip)})
 		})
 	}
-
-	// Demo routes
-	app.setupDemoRoutes()
-
-	// Main application routes
-	app.fiberApp.Get("/", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message":   "DDoS Protection System v2.0",
-			"timestamp": time.Now(),
-			"ip":        app.getRealIP(c),
-			"protected": true,
-		})
-	})
-
-	// API routes
-	api := app.fiberApp.Group("/api/v1")
-
-	api.Get("/status", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"status":     "operational",
-			"protection": "active",
-			"version":    "2.0.0",
-		})
-	})
-
-	// Test endpoints (remove in production)
-	test := app.fiberApp.Group("/test")
-
-	test.Get("/sql", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"message": "SQL test endpoint"})
-	})
-
-	test.Get("/rate", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"message": "Rate limit test endpoint"})
-	})
-}
-
-// setupDemoRoutes sets up the demo and testing routes
-func (app *Application) setupDemoRoutes() {
-	// Serve static demo files
-	app.fiberApp.Static("/demo", "./demo")
-
-	// Demo API endpoints
-	demo := app.fiberApp.Group("/demo")
-
-	// Main demo page
-	demo.Get("/", func(c *fiber.Ctx) error {
-		return c.SendFile("./demo/index.html")
-	})
-
-	// CAPTCHA challenge page
-	demo.Get("/captcha", func(c *fiber.Ctx) error {
-		return c.SendFile("./demo/captcha.html")
-	})
-
-	// Get user info
-	demo.Get("/user-info", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"ip":         app.getRealIP(c),
-			"user_agent": c.Get("User-Agent"),
-			"timestamp":  time.Now(),
-		})
-	})
-
-	// Trigger CAPTCHA challenge
-	demo.Post("/trigger-captcha", func(c *fiber.Ctx) error {
-		ip := app.getRealIP(c)
-
-		// Get CAPTCHA action from registry
-		captchaAction, exists := app.registry.GetAction("captcha_action")
-		if !exists {
-			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-				"error": "CAPTCHA service not available",
-			})
-		}
-
-		ca, ok := captchaAction.(*actions.CaptchaAction)
-		if !ok {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "CAPTCHA service error",
-			})
-		}
-
-		// Create a fake rule result to trigger CAPTCHA
-		reqCtx := &plugins.RequestContext{
-			IP:        ip,
-			UserAgent: c.Get("User-Agent"),
-			Method:    c.Method(),
-			Path:      c.Path(),
-			Headers:   make(map[string]string),
-			Timestamp: time.Now(),
-		}
-
-		ruleResult := plugins.RuleResult{
-			Triggered:  true,
-			Action:     "captcha_action",
-			Confidence: 0.8,
-			Details:    "Demo CAPTCHA challenge triggered",
-			RuleName:   "demo_rule",
-			Severity:   5,
-		}
-
-		// Execute CAPTCHA action
-		err := ca.Execute(c.Context(), reqCtx, ruleResult)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to create CAPTCHA challenge",
-			})
-		}
-
-		return c.JSON(fiber.Map{
-			"captcha_required": true,
-			"message":          "CAPTCHA challenge created",
-		})
-	})
-
-	// Get CAPTCHA challenge
-	demo.Get("/captcha-challenge", func(c *fiber.Ctx) error {
-		ip := app.getRealIP(c)
-
-		// Get CAPTCHA action from registry
-		captchaAction, exists := app.registry.GetAction("captcha_action")
-		if !exists {
-			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-				"error": "CAPTCHA service not available",
-			})
-		}
-
-		ca, ok := captchaAction.(*actions.CaptchaAction)
-		if !ok {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "CAPTCHA service error",
-			})
-		}
-
-		// Get active challenge
-		hasChallenge, challenge, err := ca.GetActiveChallenge(c.Context(), ip)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to get CAPTCHA challenge",
-			})
-		}
-
-		if !hasChallenge {
-			return c.JSON(fiber.Map{
-				"challenge": nil,
-				"message":   "No active CAPTCHA challenge",
-			})
-		}
-
-		return c.JSON(fiber.Map{
-			"challenge": challenge,
-		})
-	})
-
-	// Check CAPTCHA status
-	demo.Get("/captcha-status", func(c *fiber.Ctx) error {
-		ip := app.getRealIP(c)
-
-		// Get CAPTCHA action from registry
-		captchaAction, exists := app.registry.GetAction("captcha_action")
-		if !exists {
-			return c.JSON(fiber.Map{
-				"has_challenge": false,
-				"message":       "CAPTCHA service not available",
-			})
-		}
-
-		ca, ok := captchaAction.(*actions.CaptchaAction)
-		if !ok {
-			return c.JSON(fiber.Map{
-				"has_challenge": false,
-				"message":       "CAPTCHA service error",
-			})
-		}
-
-		// Get active challenge
-		hasChallenge, challenge, err := ca.GetActiveChallenge(c.Context(), ip)
-		if err != nil {
-			return c.JSON(fiber.Map{
-				"has_challenge": false,
-				"error":         "Failed to check CAPTCHA status",
-			})
-		}
-
-		return c.JSON(fiber.Map{
-			"has_challenge": hasChallenge,
-			"challenge":     challenge,
-		})
-	})
-
-	// Verify CAPTCHA answer
-	demo.Post("/verify-captcha", func(c *fiber.Ctx) error {
-		ip := app.getRealIP(c)
-
-		var request struct {
-			Answer      string `json:"answer"`
-			ChallengeID string `json:"challenge_id"`
-		}
-
-		if err := c.BodyParser(&request); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Invalid request format",
-			})
-		}
-
-		// Get CAPTCHA action from registry
-		captchaAction, exists := app.registry.GetAction("captcha_action")
-		if !exists {
-			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-				"error": "CAPTCHA service not available",
-			})
-		}
-
-		ca, ok := captchaAction.(*actions.CaptchaAction)
-		if !ok {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "CAPTCHA service error",
-			})
-		}
-
-		// Verify the challenge
-		verified, err := ca.VerifyChallenge(c.Context(), ip, request.Answer)
-		if err != nil {
-			return c.JSON(fiber.Map{
-				"success": false,
-				"error":   err.Error(),
-			})
-		}
-
-		return c.JSON(fiber.Map{
-			"success": verified,
-			"message": func() string {
-				if verified {
-					return "CAPTCHA verified successfully"
-				}
-				return "CAPTCHA verification failed"
-			}(),
-		})
-	})
-
-	// Generate new CAPTCHA challenge
-	demo.Post("/new-captcha", func(c *fiber.Ctx) error {
-		ip := app.getRealIP(c)
-
-		// Get CAPTCHA action from registry
-		captchaAction, exists := app.registry.GetAction("captcha_action")
-		if !exists {
-			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-				"error": "CAPTCHA service not available",
-			})
-		}
-
-		ca, ok := captchaAction.(*actions.CaptchaAction)
-		if !ok {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "CAPTCHA service error",
-			})
-		}
-
-		// Clear existing challenge
-		ca.ClearChallenge(c.Context(), ip)
-
-		// Create new challenge
-		reqCtx := &plugins.RequestContext{
-			IP:        ip,
-			UserAgent: c.Get("User-Agent"),
-			Method:    c.Method(),
-			Path:      c.Path(),
-			Headers:   make(map[string]string),
-			Timestamp: time.Now(),
-		}
-
-		ruleResult := plugins.RuleResult{
-			Triggered:  true,
-			Action:     "captcha_action",
-			Confidence: 0.8,
-			Details:    "New CAPTCHA challenge requested",
-			RuleName:   "demo_rule",
-			Severity:   5,
-		}
-
-		err := ca.Execute(c.Context(), reqCtx, ruleResult)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"success": false,
-				"error":   "Failed to create new CAPTCHA challenge",
-			})
-		}
-
-		return c.JSON(fiber.Map{
-			"success": true,
-			"message": "New CAPTCHA challenge created",
-		})
-	})
-
-	// Enhanced test endpoints for demo
-	test := app.fiberApp.Group("/test")
-
-	// XSS test endpoint
-	test.Post("/xss", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"message": "XSS test endpoint - input processed"})
-	})
-
-	// User agent test endpoint
-	test.Get("/useragent", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message":    "User agent test endpoint",
-			"user_agent": c.Get("User-Agent"),
-		})
-	})
-
-	// File access test endpoint
-	test.Get("/files/*", func(c *fiber.Ctx) error {
-		path := c.Params("*")
-		return c.JSON(fiber.Map{
-			"message": "File access test endpoint",
-			"path":    path,
-		})
-	})
-
-	// Login test endpoint
-	test.Post("/login", func(c *fiber.Ctx) error {
-		username := c.FormValue("username")
-		_ = c.FormValue("password") // Ignore password for demo
-
-		// Always fail for demo purposes
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message":  "Login failed - invalid credentials",
-			"username": username,
-		})
-	})
-
-	// Add login endpoint for brute force testing
-	app.fiberApp.Post("/login", func(c *fiber.Ctx) error {
-		username := c.FormValue("username")
-		_ = c.FormValue("password") // Ignore password for demo
-
-		// Always fail for demo purposes
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message":  "Login failed - invalid credentials",
-			"username": username,
-		})
-	})
 }
 
 // Start starts the application
