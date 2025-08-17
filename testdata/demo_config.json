@@ -1,7 +1,7 @@
 {
     "server": {
         "address": "0.0.0.0",
-        "port": 8080,
+        "port": 8082,
         "read_timeout": 10000000000,
         "write_timeout": 10000000000,
         "idle_timeout": 60000000000,
@@ -19,85 +19,7 @@
         "failure_mode": "allow",
         "action_rules": [
             {
-                "name": "Critical Account Suspension",
-                "description": "Suspend accounts for critical severity threats",
-                "min_severity": 9,
-                "min_confidence": 0.9,
-                "actions": [ "account_suspend_action" ],
-                "priority": 100,
-                "enabled": true
-            },
-            {
-                "name": "High Severity Suspension",
-                "description": "Temporary suspension for high severity threats",
-                "min_severity": 8,
-                "min_confidence": 0.8,
-                "actions": [ "suspension_action" ],
-                "priority": 90,
-                "enabled": true
-            },
-            {
-                "name": "Rate Limit Block",
-                "description": "Block IPs that exceed rate limits",
-                "min_severity": 5,
-                "min_confidence": 0.8,
-                "actions": [ "block_action" ],
-                "threat_tags": [ "rate_limit", "ddos" ],
-                "priority": 85,
-                "enabled": true
-            },
-            {
-                "name": "SQL Injection Block",
-                "description": "Block SQL injection attempts immediately",
-                "min_severity": 1,
-                "min_confidence": 0.7,
-                "actions": [ "block_action" ],
-                "threat_tags": [ "sql_injection" ],
-                "priority": 95,
-                "enabled": true
-            },
-            {
-                "name": "XSS Attack Block",
-                "description": "Block XSS attacks with medium confidence",
-                "min_severity": 1,
-                "min_confidence": 0.6,
-                "actions": [ "block_action" ],
-                "threat_tags": [ "xss" ],
-                "priority": 94,
-                "enabled": true
-            },
-            {
-                "name": "Path Traversal Block",
-                "description": "Block path traversal attempts",
-                "min_severity": 1,
-                "min_confidence": 0.8,
-                "actions": [ "block_action" ],
-                "threat_tags": [ "path_traversal" ],
-                "priority": 93,
-                "enabled": true
-            },
-            {
-                "name": "Brute Force Block",
-                "description": "Block brute force login attempts",
-                "min_severity": 4,
-                "min_confidence": 0.7,
-                "actions": [ "incremental_block_action" ],
-                "threat_tags": [ "brute_force", "login_abuse" ],
-                "priority": 88,
-                "enabled": true
-            },
-            {
-                "name": "Suspicious Behavior Warning",
-                "description": "Warn about suspicious but not clearly malicious behavior",
-                "min_severity": 3,
-                "max_severity": 4,
-                "min_confidence": 0.3,
-                "actions": [ "warning_action" ],
-                "priority": 70,
-                "enabled": true
-            },
-            {
-                "name": "CAPTCHA Challenge",
+                "name": "Demo CAPTCHA Challenge",
                 "description": "Present CAPTCHA for suspicious activity",
                 "min_severity": 3,
                 "min_confidence": 0.5,
@@ -106,13 +28,22 @@
                 "enabled": true
             },
             {
-                "name": "Low Confidence Monitoring",
-                "description": "Monitor low confidence threats without blocking",
+                "name": "High Severity Block",
+                "description": "Block high severity threats",
+                "min_severity": 8,
+                "min_confidence": 0.8,
+                "actions": [ "block_action" ],
+                "priority": 90,
+                "enabled": true
+            },
+            {
+                "name": "Warning for Low Threats",
+                "description": "Warn about low severity threats",
                 "min_severity": 1,
-                "max_confidence": 0.5,
+                "max_severity": 4,
+                "min_confidence": 0.3,
                 "actions": [ "warning_action" ],
-                "exclude_tags": [ "sql_injection", "xss", "rate_limit" ],
-                "priority": 60,
+                "priority": 70,
                 "enabled": true
             }
         ]
@@ -122,7 +53,7 @@
         "address": "",
         "password": "",
         "database": 0,
-        "prefix": "ddos_protection:",
+        "prefix": "guard_demo:",
         "max_retries": 3,
         "timeout": 5000000000,
         "options": {
@@ -143,9 +74,9 @@
                 "priority": 90,
                 "parameters": {
                     "window_size": "1m",
-                    "max_requests": 100,
+                    "max_requests": 20,
                     "key_template": "rate_limit:{ip}",
-                    "burst_allowed": 10,
+                    "burst_allowed": 5,
                     "cleanup_period": "5m"
                 }
             },
@@ -158,9 +89,7 @@
                         "(?i)'\\s*(or|and)\\s*'",
                         "(?i)\\b(exec|execute|sp_|xp_)\\w*\\s*\\(",
                         "(?i)--\\s*$",
-                        "(?i)/\\*.*\\*/",
-                        "(?i)\\b(script|javascript|vbscript)\\s*:",
-                        "(?i)<\\s*script[^>]*>.*?</\\s*script\\s*>"
+                        "(?i)/\\*.*\\*/"
                     ],
                     "check_headers": true,
                     "check_query_params": true,
@@ -177,12 +106,8 @@
                         "(?i)javascript\\s*:",
                         "(?i)on\\w+\\s*=",
                         "(?i)<\\s*iframe[^>]*>",
-                        "(?i)<\\s*object[^>]*>",
-                        "(?i)<\\s*embed[^>]*>",
                         "(?i)eval\\s*\\(",
-                        "(?i)alert\\s*\\(",
-                        "(?i)confirm\\s*\\(",
-                        "(?i)prompt\\s*\\("
+                        "(?i)alert\\s*\\("
                     ],
                     "check_all_params": true,
                     "decode_url": true,
@@ -197,14 +122,8 @@
                         "\\.\\./",
                         "\\.\\.\\\\",
                         "%2e%2e%2f",
-                        "%2e%2e%5c",
-                        "..%2f",
-                        "..%5c",
-                        "%252e%252e%252f",
                         "etc/passwd",
-                        "windows/system32",
-                        "/proc/",
-                        "boot.ini"
+                        "windows/system32"
                     ],
                     "check_path": true,
                     "check_query_params": true,
@@ -215,12 +134,12 @@
                 "enabled": true,
                 "priority": 80,
                 "parameters": {
-                    "login_endpoints": [ "/login", "/auth", "/signin", "/api/auth" ],
-                    "max_attempts": 5,
+                    "login_endpoints": [ "/login", "/auth", "/signin", "/api/auth", "/test/login" ],
+                    "max_attempts": 3,
                     "window_size": "5m",
                     "key_template": "brute_force:{ip}:{endpoint}",
                     "track_usernames": true,
-                    "username_limit": 10
+                    "username_limit": 5
                 }
             },
             "suspicious_user_agent_detector": {
@@ -231,15 +150,11 @@
                         "(?i)(bot|crawler|spider|scraper)",
                         "(?i)(curl|wget|python|java)",
                         "(?i)(nmap|nikto|sqlmap|burp)",
-                        "(?i)(scanner|exploit|hack)",
-                        "^$",
-                        "^\\s*$"
+                        "(?i)(scanner|exploit|hack)"
                     ],
                     "whitelist_patterns": [
                         "(?i)googlebot",
-                        "(?i)bingbot",
-                        "(?i)facebookexternalhit",
-                        "(?i)twitterbot"
+                        "(?i)bingbot"
                     ],
                     "severity": 3
                 }
@@ -248,7 +163,7 @@
                 "enabled": false,
                 "priority": 60,
                 "parameters": {
-                    "blocked_countries": [ "CN", "RU", "KP" ],
+                    "blocked_countries": [ "CN", "RU" ],
                     "allowed_countries": [ ],
                     "use_cloudflare_headers": true,
                     "severity": 4
@@ -261,7 +176,7 @@
                 "priority": 100,
                 "parameters": {
                     "default_duration": "5m",
-                    "max_duration": "24h",
+                    "max_duration": "1h",
                     "block_message": "Access denied due to security policy violation",
                     "log_blocks": true,
                     "escalation_rules": [
@@ -272,23 +187,13 @@
                         },
                         {
                             "violation_count": 3,
-                            "duration": "30m",
+                            "duration": "15m",
                             "permanent": false
                         },
                         {
                             "violation_count": 5,
-                            "duration": "2h",
+                            "duration": "1h",
                             "permanent": false
-                        },
-                        {
-                            "violation_count": 10,
-                            "duration": "24h",
-                            "permanent": false
-                        },
-                        {
-                            "violation_count": 20,
-                            "duration": "0",
-                            "permanent": true
                         }
                     ]
                 }
@@ -298,9 +203,9 @@
                 "priority": 90,
                 "parameters": {
                     "initial_duration": "1m",
-                    "max_duration": "1h",
+                    "max_duration": "30m",
                     "multiplier": 2.0,
-                    "reset_after": "24h",
+                    "reset_after": "1h",
                     "log_blocks": true
                 }
             },
@@ -309,17 +214,17 @@
                 "priority": 85,
                 "parameters": {
                     "default_duration": "1h",
-                    "max_duration": "7d",
-                    "require_manual_review": true,
-                    "notification_email": "security@example.com"
+                    "max_duration": "24h",
+                    "require_manual_review": false,
+                    "notification_email": "demo@example.com"
                 }
             },
             "account_suspend_action": {
                 "enabled": true,
                 "priority": 95,
                 "parameters": {
-                    "permanent": true,
-                    "require_admin_approval": true,
+                    "permanent": false,
+                    "require_admin_approval": false,
                     "notification_email": "admin@example.com",
                     "log_suspension": true
                 }
@@ -331,7 +236,7 @@
                     "log_warnings": true,
                     "include_details": true,
                     "rate_limit_warnings": true,
-                    "max_warnings_per_hour": 10
+                    "max_warnings_per_hour": 20
                 }
             },
             "captcha_action": {
@@ -342,7 +247,9 @@
                     "site_key": "",
                     "secret_key": "",
                     "threshold": 0.5,
-                    "duration": "10m"
+                    "duration": "10m",
+                    "max_attempts": 3,
+                    "difficulty": "medium"
                 }
             }
         },
@@ -351,12 +258,12 @@
                 "enabled": true,
                 "priority": 100,
                 "parameters": {
-                    "log_file": "security_events.log",
+                    "log_file": "demo_security_events.log",
                     "log_level": "INFO",
                     "event_types": [ "*" ],
                     "format": "json",
-                    "max_file_size": "100MB",
-                    "max_backups": 5,
+                    "max_file_size": "10MB",
+                    "max_backups": 3,
                     "compress": true,
                     "include_request_details": true
                 }
@@ -365,15 +272,11 @@
                 "enabled": false,
                 "priority": 90,
                 "parameters": {
-                    "webhook_url": "https://your-webhook-endpoint.com/security-events",
+                    "webhook_url": "https://demo-webhook.example.com/security-events",
                     "timeout": "10s",
                     "retry_attempts": 3,
                     "event_types": [ "threat_detected", "action_executed" ],
-                    "include_metadata": true,
-                    "authentication": {
-                        "type": "bearer",
-                        "token": "your-webhook-token"
-                    }
+                    "include_metadata": true
                 }
             },
             "email_handler": {
@@ -382,11 +285,11 @@
                 "parameters": {
                     "smtp_host": "smtp.example.com",
                     "smtp_port": 587,
-                    "username": "alerts@example.com",
-                    "password": "your-password",
-                    "from": "DDoS Protection <alerts@example.com>",
-                    "to": [ "security@example.com" ],
-                    "subject_template": "Security Alert: {{.Type}}",
+                    "username": "demo@example.com",
+                    "password": "demo-password",
+                    "from": "Guard Demo <demo@example.com>",
+                    "to": [ "admin@example.com" ],
+                    "subject_template": "Demo Security Alert: {{.Type}}",
                     "severity_threshold": 7,
                     "rate_limit": "1/5m"
                 }
@@ -419,11 +322,11 @@
         },
         "security_headers": {
             "x_content_type_options": "nosniff",
-            "x_frame_options": "DENY",
+            "x_frame_options": "SAMEORIGIN",
             "x_xss_protection": "1; mode=block",
             "strict_transport_security": "max-age=31536000; includeSubDomains",
             "referrer_policy": "strict-origin-when-cross-origin",
-            "content_security_policy": "default-src 'self'"
+            "content_security_policy": "default-src 'self' 'unsafe-inline'"
         }
     },
     "logging": {
@@ -435,9 +338,9 @@
         "max_age": 28,
         "compress": true,
         "fields": {
-            "service": "ddos-protection",
+            "service": "guard-demo",
             "version": "2.0.0",
-            "environment": "production"
+            "environment": "demo"
         }
     },
     "monitoring": {
@@ -455,10 +358,10 @@
     "api": {
         "enable_admin_api": true,
         "admin_api_path": "/admin",
-        "require_authentication": true,
+        "require_authentication": false,
         "api_keys": {
-            "admin": "your-admin-api-key-here",
-            "readonly": "your-readonly-api-key-here"
+            "admin": "demo-admin-key",
+            "readonly": "demo-readonly-key"
         },
         "rate_limits": {
             "admin_api": "100/1m",

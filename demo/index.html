@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guard Security System - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .demo-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .demo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .demo-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .demo-card p {
+            margin-bottom: 20px;
+            line-height: 1.6;
+            color: #666;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #feca57, #ff9ff3);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #48dbfb, #0abde3);
+        }
+
+        .status-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .status-item {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .status-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .status-label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .test-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .result-panel {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .result-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .result-danger {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .result-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Guard Security System</h1>
+            <p>Interactive Demo & Testing Interface</p>
+        </div>
+
+        <div class="status-panel">
+            <h3 style="margin-bottom: 20px; color: #667eea;">System Status</h3>
+            <div class="status-grid" id="statusGrid">
+                <div class="status-item">
+                    <div class="status-value" id="totalPlugins">-</div>
+                    <div class="status-label">Total Plugins</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-value" id="totalRequests">-</div>
+                    <div class="status-label">Total Requests</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-value" id="threatsDetected">-</div>
+                    <div class="status-label">Threats Detected</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-value" id="blockedRequests">-</div>
+                    <div class="status-label">Blocked Requests</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-grid">
+            <div class="demo-card">
+                <h3>🔍 SQL Injection Test</h3>
+                <p>Test the SQL injection detector with various payloads. The system will detect and block malicious SQL
+                    injection attempts.</p>
+                <div class="test-form">
+                    <div class="form-group">
+                        <label>Test Payload:</label>
+                        <input type="text" id="sqlPayload" placeholder="' OR 1=1 --" value="' OR 1=1 --">
+                    </div>
+                    <button class="btn btn-danger" onclick="testSQLInjection()">Test SQL Injection</button>
+                </div>
+                <div class="result-panel" id="sqlResult"></div>
+            </div>
+
+            <div class="demo-card">
+                <h3>🚨 XSS Attack Test</h3>
+                <p>Test Cross-Site Scripting detection with various XSS payloads. The system identifies and blocks XSS
+                    attempts.</p>
+                <div class="test-form">
+                    <div class="form-group">
+                        <label>XSS Payload:</label>
+                        <input type="text" id="xssPayload" placeholder="<script>alert('XSS')</script>"
+                            value="<script>alert('XSS')</script>">
+                    </div>
+                    <button class="btn btn-danger" onclick="testXSS()">Test XSS Attack</button>
+                </div>
+                <div class="result-panel" id="xssResult"></div>
+            </div>
+
+            <div class="demo-card">
+                <h3>📁 Path Traversal Test</h3>
+                <p>Test directory traversal detection. The system prevents unauthorized file system access attempts.</p>
+                <div class="test-form">
+                    <div class="form-group">
+                        <label>Path Payload:</label>
+                        <input type="text" id="pathPayload" placeholder="../../../etc/passwd"
+                            value="../../../etc/passwd">
+                    </div>
+                    <button class="btn btn-danger" onclick="testPathTraversal()">Test Path Traversal</button>
+                </div>
+                <div class="result-panel" id="pathResult"></div>
+            </div>
+
+            <div class="demo-card">
+                <h3>🔐 Brute Force Test</h3>
+                <p>Simulate brute force login attempts. The system detects and blocks repeated failed login attempts.
+                </p>
+                <div class="test-form">
+                    <div class="form-group">
+                        <label>Username:</label>
+                        <input type="text" id="bruteUsername" placeholder="admin" value="admin">
+                    </div>
+                    <div class="form-group">
+                        <label>Password:</label>
+                        <input type="password" id="brutePassword" placeholder="wrong_password" value="wrong_password">
+                    </div>
+                    <button class="btn btn-warning" onclick="testBruteForce()">Simulate Login Attempt</button>
+                </div>
+                <div class="result-panel" id="bruteResult"></div>
+            </div>
+
+            <div class="demo-card">
+                <h3>🤖 User Agent Test</h3>
+                <p>Test suspicious user agent detection. The system identifies automated tools and malicious bots.</p>
+                <div class="test-form">
+                    <div class="form-group">
+                        <label>User Agent:</label>
+                        <input type="text" id="userAgent" placeholder="sqlmap/1.0" value="sqlmap/1.0">
+                    </div>
+                    <button class="btn btn-warning" onclick="testUserAgent()">Test User Agent</button>
+                </div>
+                <div class="result-panel" id="uaResult"></div>
+            </div>
+
+            <div class="demo-card">
+                <h3>⚡ Rate Limiting Test</h3>
+                <p>Test rate limiting protection. Send multiple requests quickly to trigger rate limiting.</p>
+                <div class="test-form">
+                    <div class="form-group">
+                        <label>Number of Requests:</label>
+                        <input type="number" id="rateCount" value="10" min="1" max="50">
+                    </div>
+                    <button class="btn btn-warning" onclick="testRateLimit()">Test Rate Limiting</button>
+                </div>
+                <div class="result-panel" id="rateResult"></div>
+            </div>
+
+            <div class="demo-card">
+                <h3>🧩 CAPTCHA Challenge</h3>
+                <p>Trigger a CAPTCHA challenge. When suspicious activity is detected, users may be presented with a
+                    CAPTCHA.</p>
+                <div class="test-form">
+                    <button class="btn btn-success" onclick="triggerCaptcha()">Trigger CAPTCHA</button>
+                    <button class="btn" onclick="checkCaptchaStatus()">Check CAPTCHA Status</button>
+                </div>
+                <div class="result-panel" id="captchaResult"></div>
+            </div>
+
+            <div class="demo-card">
+                <h3>📊 System Metrics</h3>
+                <p>View real-time security metrics and system performance data.</p>
+                <div class="test-form">
+                    <button class="btn btn-success" onclick="loadMetrics()">Load Metrics</button>
+                    <button class="btn" onclick="loadHealth()">Health Check</button>
+                </div>
+                <div class="result-panel" id="metricsResult"></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2025 Guard Security System - Advanced DDoS Protection & Web Application Firewall</p>
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh status every 5 seconds
+        setInterval(updateStatus, 5000);
+        updateStatus(); // Initial load
+
+        async function updateStatus() {
+            try {
+                const response = await fetch('/metrics');
+                const data = await response.json();
+
+                // Count total plugins
+                const pluginCount = Object.keys(data.plugins || {}).length;
+                document.getElementById('totalPlugins').textContent = pluginCount;
+
+                // Get request stats
+                const ruleEngine = data.rule_engine || {};
+                document.getElementById('totalRequests').textContent = ruleEngine.total_requests || 0;
+                document.getElementById('threatsDetected').textContent = ruleEngine.threats_detected || 0;
+
+                // Calculate blocked requests from plugins
+                let blockedCount = 0;
+                const plugins = data.plugins || {};
+                if (plugins.block_action) {
+                    blockedCount += plugins.block_action.total_blocks || 0;
+                }
+                document.getElementById('blockedRequests').textContent = blockedCount;
+
+            } catch (error) {
+                console.error('Failed to update status:', error);
+            }
+        }
+
+        async function testSQLInjection() {
+            const payload = document.getElementById('sqlPayload').value;
+            const result = document.getElementById('sqlResult');
+
+            try {
+                const response = await fetch(`/test/sql?q=${encodeURIComponent(payload)}`);
+                const data = await response.json();
+
+                if (response.status === 403 || response.status === 429) {
+                    showResult(result, 'danger', `🚫 SQL Injection Blocked! ${data.message || data.error}`);
+                } else {
+                    showResult(result, 'success', `✅ Request Allowed: ${data.message}`);
+                }
+            } catch (error) {
+                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+            }
+        }
+
+        async function testXSS() {
+            const payload = document.getElementById('xssPayload').value;
+            const result = document.getElementById('xssResult');
+
+            try {
+                const response = await fetch('/test/xss', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `input=${encodeURIComponent(payload)}`
+                });
+                const data = await response.json();
+
+                if (response.status === 403 || response.status === 429) {
+                    showResult(result, 'danger', `🚫 XSS Attack Blocked! ${data.message || data.error}`);
+                } else {
+                    showResult(result, 'success', `✅ Request Allowed: ${data.message}`);
+                }
+            } catch (error) {
+                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+            }
+        }
+
+        async function testPathTraversal() {
+            const payload = document.getElementById('pathPayload').value;
+            const result = document.getElementById('pathResult');
+
+            try {
+                const response = await fetch(`/files/${encodeURIComponent(payload)}`);
+                const data = await response.json();
+
+                if (response.status === 403 || response.status === 429) {
+                    showResult(result, 'danger', `🚫 Path Traversal Blocked! ${data.message || data.error}`);
+                } else {
+                    showResult(result, 'success', `✅ Request Allowed: ${data.message}`);
+                }
+            } catch (error) {
+                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+            }
+        }
+
+        async function testBruteForce() {
+            const username = document.getElementById('bruteUsername').value;
+            const password = document.getElementById('brutePassword').value;
+            const result = document.getElementById('bruteResult');
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+                });
+                const data = await response.json();
+
+                if (response.status === 403 || response.status === 429) {
+                    showResult(result, 'danger', `🚫 Brute Force Detected! ${data.message || data.error}`);
+                } else if (response.status === 401) {
+                    showResult(result, 'warning', `❌ Login Failed: ${data.message}`);
+                } else {
+                    showResult(result, 'success', `✅ Login Successful: ${data.message}`);
+                }
+            } catch (error) {
+                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+            }
+        }
+
+        async function testUserAgent() {
+            const userAgent = document.getElementById('userAgent').value;
+            const result = document.getElementById('uaResult');
+
+            try {
+                const response = await fetch('/test/useragent', {
+                    headers: { 'User-Agent': userAgent }
+                });
+                const data = await response.json();
+
+                if (response.status === 403 || response.status === 429) {
+                    showResult(result, 'danger', `🚫 Suspicious User Agent Blocked! ${data.message || data.error}`);
+                } else {
+                    showResult(result, 'success', `✅ User Agent Allowed: ${data.message}`);
+                }
+            } catch (error) {
+                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+            }
+        }
+
+        async function testRateLimit() {
+            const count = parseInt(document.getElementById('rateCount').value);
+            const result = document.getElementById('rateResult');
+
+            showResult(result, 'warning', `🔄 Sending ${count} requests...`);
+
+            let blocked = 0;
+            let allowed = 0;
+
+            for (let i = 0; i < count; i++) {
+                try {
+                    const response = await fetch('/test/rate');
+                    if (response.status === 403 || response.status === 429) {
+                        blocked++;
+                    } else {
+                        allowed++;
+                    }
+                } catch (error) {
+                    blocked++;
+                }
+
+                // Small delay to avoid overwhelming the browser
+                if (i % 5 === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+
+            if (blocked > 0) {
+                showResult(result, 'danger', `🚫 Rate Limit Triggered! ${allowed} allowed, ${blocked} blocked`);
+            } else {
+                showResult(result, 'success', `✅ All ${allowed} requests allowed`);
+            }
+        }
+
+        async function triggerCaptcha() {
+            const result = document.getElementById('captchaResult');
+
+            try {
+                const response = await fetch('/demo/trigger-captcha', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.captcha_required) {
+                    showResult(result, 'warning', `🧩 CAPTCHA Challenge Triggered! Challenge: ${data.challenge}`);
+                } else {
+                    showResult(result, 'success', `✅ ${data.message}`);
+                }
+            } catch (error) {
+                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+            }
+        }
+
+        async function checkCaptchaStatus() {
+            const result = document.getElementById('captchaResult');
+
+            try {
+                const response = await fetch('/demo/captcha-status');
+                const data = await response.json();
+
+                if (data.has_challenge) {
+                    showResult(result, 'warning', `🧩 Active CAPTCHA: ${data.challenge.challenge}`);
+                } else {
+                    showResult(result, 'success', `✅ No active CAPTCHA challenges`);
+                }
+            } catch (error) {
+                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+            }
+        }
+
+        async function loadMetrics() {
+            const result = document.getElementById('metricsResult');
+
+            try {
+                const response = await fetch('/metrics');
+                const data = await response.json();
+
+                let metricsHtml = '<h4>System Metrics:</h4><pre style="background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto;">';
+                metricsHtml += JSON.stringify(data, null, 2);
+                metricsHtml += '</pre>';
+
+                showResult(result, 'success', metricsHtml);
+            } catch (error) {
+                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+            }
+        }
+
+        async function loadHealth() {
+            const result = document.getElementById('metricsResult');
+
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+
+                let healthHtml = '<h4>Health Status:</h4><pre style="background: #f8f9fa; padding: 10px; border-radius: 5px;">';
+                healthHtml += JSON.stringify(data, null, 2);
+                healthHtml += '</pre>';
+
+                if (data.status === 'healthy') {
+                    showResult(result, 'success', healthHtml);
+                } else {
+                    showResult(result, 'danger', healthHtml);
+                }
+            } catch (error) {
+                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+            }
+        }
+
+        function showResult(element, type, message) {
+            element.className = `result-panel result-${type}`;
+            element.innerHTML = message;
+            element.style.display = 'block';
+
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 10000);
+        }
+    </script>
+</body>
+
+</html>

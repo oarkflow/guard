@@ -166,6 +166,81 @@ func (app *Application) registerBuiltinPlugins() error {
 		return fmt.Errorf("failed to register SQL injection detector: %w", err)
 	}
 
+	xssDetector := detectors.NewXSSDetector()
+	if err := app.registry.RegisterDetector(
+		xssDetector,
+		plugins.PluginMetadata{
+			Name:        xssDetector.Name(),
+			Version:     xssDetector.Version(),
+			Description: xssDetector.Description(),
+			Type:        "detector",
+			Author:      "System",
+		},
+		cfg.Plugins.Detectors["xss_detector"],
+	); err != nil {
+		return fmt.Errorf("failed to register XSS detector: %w", err)
+	}
+
+	pathTraversalDetector := detectors.NewPathTraversalDetector()
+	if err := app.registry.RegisterDetector(
+		pathTraversalDetector,
+		plugins.PluginMetadata{
+			Name:        pathTraversalDetector.Name(),
+			Version:     pathTraversalDetector.Version(),
+			Description: pathTraversalDetector.Description(),
+			Type:        "detector",
+			Author:      "System",
+		},
+		cfg.Plugins.Detectors["path_traversal_detector"],
+	); err != nil {
+		return fmt.Errorf("failed to register path traversal detector: %w", err)
+	}
+
+	bruteForceDetector := detectors.NewBruteForceDetector(app.stateStore)
+	if err := app.registry.RegisterDetector(
+		bruteForceDetector,
+		plugins.PluginMetadata{
+			Name:        bruteForceDetector.Name(),
+			Version:     bruteForceDetector.Version(),
+			Description: bruteForceDetector.Description(),
+			Type:        "detector",
+			Author:      "System",
+		},
+		cfg.Plugins.Detectors["brute_force_detector"],
+	); err != nil {
+		return fmt.Errorf("failed to register brute force detector: %w", err)
+	}
+
+	suspiciousUADetector := detectors.NewSuspiciousUserAgentDetector()
+	if err := app.registry.RegisterDetector(
+		suspiciousUADetector,
+		plugins.PluginMetadata{
+			Name:        suspiciousUADetector.Name(),
+			Version:     suspiciousUADetector.Version(),
+			Description: suspiciousUADetector.Description(),
+			Type:        "detector",
+			Author:      "System",
+		},
+		cfg.Plugins.Detectors["suspicious_user_agent_detector"],
+	); err != nil {
+		return fmt.Errorf("failed to register suspicious user agent detector: %w", err)
+	}
+
+	geoLocationDetector := detectors.NewGeoLocationDetector()
+	if err := app.registry.RegisterDetector(
+		geoLocationDetector,
+		plugins.PluginMetadata{
+			Name:        geoLocationDetector.Name(),
+			Version:     geoLocationDetector.Version(),
+			Description: geoLocationDetector.Description(),
+			Type:        "detector",
+			Author:      "System",
+		},
+		cfg.Plugins.Detectors["geo_location_detector"],
+	); err != nil {
+		return fmt.Errorf("failed to register geo location detector: %w", err)
+	}
+
 	rateLimitDetector := detectors.NewRateLimitDetector(app.stateStore)
 	if err := app.registry.RegisterDetector(
 		rateLimitDetector,
@@ -197,6 +272,81 @@ func (app *Application) registerBuiltinPlugins() error {
 		return fmt.Errorf("failed to register block action: %w", err)
 	}
 
+	incrementalBlockAction := actions.NewIncrementalBlockAction(app.stateStore)
+	if err := app.registry.RegisterAction(
+		incrementalBlockAction,
+		plugins.PluginMetadata{
+			Name:        incrementalBlockAction.Name(),
+			Version:     incrementalBlockAction.Version(),
+			Description: incrementalBlockAction.Description(),
+			Type:        "action",
+			Author:      "System",
+		},
+		cfg.Plugins.Actions["incremental_block_action"],
+	); err != nil {
+		return fmt.Errorf("failed to register incremental block action: %w", err)
+	}
+
+	suspensionAction := actions.NewSuspensionAction(app.stateStore)
+	if err := app.registry.RegisterAction(
+		suspensionAction,
+		plugins.PluginMetadata{
+			Name:        suspensionAction.Name(),
+			Version:     suspensionAction.Version(),
+			Description: suspensionAction.Description(),
+			Type:        "action",
+			Author:      "System",
+		},
+		cfg.Plugins.Actions["suspension_action"],
+	); err != nil {
+		return fmt.Errorf("failed to register suspension action: %w", err)
+	}
+
+	accountSuspendAction := actions.NewAccountSuspendAction(app.stateStore)
+	if err := app.registry.RegisterAction(
+		accountSuspendAction,
+		plugins.PluginMetadata{
+			Name:        accountSuspendAction.Name(),
+			Version:     accountSuspendAction.Version(),
+			Description: accountSuspendAction.Description(),
+			Type:        "action",
+			Author:      "System",
+		},
+		cfg.Plugins.Actions["account_suspend_action"],
+	); err != nil {
+		return fmt.Errorf("failed to register account suspend action: %w", err)
+	}
+
+	warningAction := actions.NewWarningAction(app.stateStore)
+	if err := app.registry.RegisterAction(
+		warningAction,
+		plugins.PluginMetadata{
+			Name:        warningAction.Name(),
+			Version:     warningAction.Version(),
+			Description: warningAction.Description(),
+			Type:        "action",
+			Author:      "System",
+		},
+		cfg.Plugins.Actions["warning_action"],
+	); err != nil {
+		return fmt.Errorf("failed to register warning action: %w", err)
+	}
+
+	captchaAction := actions.NewCaptchaAction(app.stateStore)
+	if err := app.registry.RegisterAction(
+		captchaAction,
+		plugins.PluginMetadata{
+			Name:        captchaAction.Name(),
+			Version:     captchaAction.Version(),
+			Description: captchaAction.Description(),
+			Type:        "action",
+			Author:      "System",
+		},
+		cfg.Plugins.Actions["captcha_action"],
+	); err != nil {
+		return fmt.Errorf("failed to register captcha action: %w", err)
+	}
+
 	// Register event handler plugins
 	securityLogger := handlers.NewSecurityLoggerHandler()
 	if err := app.registry.RegisterHandler(
@@ -211,6 +361,51 @@ func (app *Application) registerBuiltinPlugins() error {
 		cfg.Plugins.Handlers["security_logger_handler"],
 	); err != nil {
 		return fmt.Errorf("failed to register security logger handler: %w", err)
+	}
+
+	webhookHandler := handlers.NewWebhookHandler()
+	if err := app.registry.RegisterHandler(
+		webhookHandler,
+		plugins.PluginMetadata{
+			Name:        webhookHandler.Name(),
+			Version:     "1.0.0",
+			Description: "Sends security events to webhook endpoints",
+			Type:        "handler",
+			Author:      "System",
+		},
+		cfg.Plugins.Handlers["webhook_handler"],
+	); err != nil {
+		return fmt.Errorf("failed to register webhook handler: %w", err)
+	}
+
+	emailHandler := handlers.NewEmailHandler()
+	if err := app.registry.RegisterHandler(
+		emailHandler,
+		plugins.PluginMetadata{
+			Name:        emailHandler.Name(),
+			Version:     "1.0.0",
+			Description: "Sends security alerts via email",
+			Type:        "handler",
+			Author:      "System",
+		},
+		cfg.Plugins.Handlers["email_handler"],
+	); err != nil {
+		return fmt.Errorf("failed to register email handler: %w", err)
+	}
+
+	metricsHandler := handlers.NewMetricsHandler()
+	if err := app.registry.RegisterHandler(
+		metricsHandler,
+		plugins.PluginMetadata{
+			Name:        metricsHandler.Name(),
+			Version:     "1.0.0",
+			Description: "Collects and exposes security metrics",
+			Type:        "handler",
+			Author:      "System",
+		},
+		cfg.Plugins.Handlers["metrics_handler"],
+	); err != nil {
+		return fmt.Errorf("failed to register metrics handler: %w", err)
 	}
 
 	return nil
@@ -575,6 +770,9 @@ func (app *Application) setupRoutes() {
 		})
 	}
 
+	// Demo routes
+	app.setupDemoRoutes()
+
 	// Main application routes
 	app.fiberApp.Get("/", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
@@ -605,6 +803,315 @@ func (app *Application) setupRoutes() {
 
 	test.Get("/rate", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"message": "Rate limit test endpoint"})
+	})
+}
+
+// setupDemoRoutes sets up the demo and testing routes
+func (app *Application) setupDemoRoutes() {
+	// Serve static demo files
+	app.fiberApp.Static("/demo", "./demo")
+
+	// Demo API endpoints
+	demo := app.fiberApp.Group("/demo")
+
+	// Main demo page
+	demo.Get("/", func(c *fiber.Ctx) error {
+		return c.SendFile("./demo/index.html")
+	})
+
+	// CAPTCHA challenge page
+	demo.Get("/captcha", func(c *fiber.Ctx) error {
+		return c.SendFile("./demo/captcha.html")
+	})
+
+	// Get user info
+	demo.Get("/user-info", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"ip":         app.getRealIP(c),
+			"user_agent": c.Get("User-Agent"),
+			"timestamp":  time.Now(),
+		})
+	})
+
+	// Trigger CAPTCHA challenge
+	demo.Post("/trigger-captcha", func(c *fiber.Ctx) error {
+		ip := app.getRealIP(c)
+
+		// Get CAPTCHA action from registry
+		captchaAction, exists := app.registry.GetAction("captcha_action")
+		if !exists {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+				"error": "CAPTCHA service not available",
+			})
+		}
+
+		ca, ok := captchaAction.(*actions.CaptchaAction)
+		if !ok {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "CAPTCHA service error",
+			})
+		}
+
+		// Create a fake rule result to trigger CAPTCHA
+		reqCtx := &plugins.RequestContext{
+			IP:        ip,
+			UserAgent: c.Get("User-Agent"),
+			Method:    c.Method(),
+			Path:      c.Path(),
+			Headers:   make(map[string]string),
+			Timestamp: time.Now(),
+		}
+
+		ruleResult := plugins.RuleResult{
+			Triggered:  true,
+			Action:     "captcha_action",
+			Confidence: 0.8,
+			Details:    "Demo CAPTCHA challenge triggered",
+			RuleName:   "demo_rule",
+			Severity:   5,
+		}
+
+		// Execute CAPTCHA action
+		err := ca.Execute(c.Context(), reqCtx, ruleResult)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to create CAPTCHA challenge",
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"captcha_required": true,
+			"message":          "CAPTCHA challenge created",
+		})
+	})
+
+	// Get CAPTCHA challenge
+	demo.Get("/captcha-challenge", func(c *fiber.Ctx) error {
+		ip := app.getRealIP(c)
+
+		// Get CAPTCHA action from registry
+		captchaAction, exists := app.registry.GetAction("captcha_action")
+		if !exists {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+				"error": "CAPTCHA service not available",
+			})
+		}
+
+		ca, ok := captchaAction.(*actions.CaptchaAction)
+		if !ok {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "CAPTCHA service error",
+			})
+		}
+
+		// Get active challenge
+		hasChallenge, challenge, err := ca.GetActiveChallenge(c.Context(), ip)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to get CAPTCHA challenge",
+			})
+		}
+
+		if !hasChallenge {
+			return c.JSON(fiber.Map{
+				"challenge": nil,
+				"message":   "No active CAPTCHA challenge",
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"challenge": challenge,
+		})
+	})
+
+	// Check CAPTCHA status
+	demo.Get("/captcha-status", func(c *fiber.Ctx) error {
+		ip := app.getRealIP(c)
+
+		// Get CAPTCHA action from registry
+		captchaAction, exists := app.registry.GetAction("captcha_action")
+		if !exists {
+			return c.JSON(fiber.Map{
+				"has_challenge": false,
+				"message":       "CAPTCHA service not available",
+			})
+		}
+
+		ca, ok := captchaAction.(*actions.CaptchaAction)
+		if !ok {
+			return c.JSON(fiber.Map{
+				"has_challenge": false,
+				"message":       "CAPTCHA service error",
+			})
+		}
+
+		// Get active challenge
+		hasChallenge, challenge, err := ca.GetActiveChallenge(c.Context(), ip)
+		if err != nil {
+			return c.JSON(fiber.Map{
+				"has_challenge": false,
+				"error":         "Failed to check CAPTCHA status",
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"has_challenge": hasChallenge,
+			"challenge":     challenge,
+		})
+	})
+
+	// Verify CAPTCHA answer
+	demo.Post("/verify-captcha", func(c *fiber.Ctx) error {
+		ip := app.getRealIP(c)
+
+		var request struct {
+			Answer      string `json:"answer"`
+			ChallengeID string `json:"challenge_id"`
+		}
+
+		if err := c.BodyParser(&request); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Invalid request format",
+			})
+		}
+
+		// Get CAPTCHA action from registry
+		captchaAction, exists := app.registry.GetAction("captcha_action")
+		if !exists {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+				"error": "CAPTCHA service not available",
+			})
+		}
+
+		ca, ok := captchaAction.(*actions.CaptchaAction)
+		if !ok {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "CAPTCHA service error",
+			})
+		}
+
+		// Verify the challenge
+		verified, err := ca.VerifyChallenge(c.Context(), ip, request.Answer)
+		if err != nil {
+			return c.JSON(fiber.Map{
+				"success": false,
+				"error":   err.Error(),
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"success": verified,
+			"message": func() string {
+				if verified {
+					return "CAPTCHA verified successfully"
+				}
+				return "CAPTCHA verification failed"
+			}(),
+		})
+	})
+
+	// Generate new CAPTCHA challenge
+	demo.Post("/new-captcha", func(c *fiber.Ctx) error {
+		ip := app.getRealIP(c)
+
+		// Get CAPTCHA action from registry
+		captchaAction, exists := app.registry.GetAction("captcha_action")
+		if !exists {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+				"error": "CAPTCHA service not available",
+			})
+		}
+
+		ca, ok := captchaAction.(*actions.CaptchaAction)
+		if !ok {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "CAPTCHA service error",
+			})
+		}
+
+		// Clear existing challenge
+		ca.ClearChallenge(c.Context(), ip)
+
+		// Create new challenge
+		reqCtx := &plugins.RequestContext{
+			IP:        ip,
+			UserAgent: c.Get("User-Agent"),
+			Method:    c.Method(),
+			Path:      c.Path(),
+			Headers:   make(map[string]string),
+			Timestamp: time.Now(),
+		}
+
+		ruleResult := plugins.RuleResult{
+			Triggered:  true,
+			Action:     "captcha_action",
+			Confidence: 0.8,
+			Details:    "New CAPTCHA challenge requested",
+			RuleName:   "demo_rule",
+			Severity:   5,
+		}
+
+		err := ca.Execute(c.Context(), reqCtx, ruleResult)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"error":   "Failed to create new CAPTCHA challenge",
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"success": true,
+			"message": "New CAPTCHA challenge created",
+		})
+	})
+
+	// Enhanced test endpoints for demo
+	test := app.fiberApp.Group("/test")
+
+	// XSS test endpoint
+	test.Post("/xss", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"message": "XSS test endpoint - input processed"})
+	})
+
+	// User agent test endpoint
+	test.Get("/useragent", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"message":    "User agent test endpoint",
+			"user_agent": c.Get("User-Agent"),
+		})
+	})
+
+	// File access test endpoint
+	test.Get("/files/*", func(c *fiber.Ctx) error {
+		path := c.Params("*")
+		return c.JSON(fiber.Map{
+			"message": "File access test endpoint",
+			"path":    path,
+		})
+	})
+
+	// Login test endpoint
+	test.Post("/login", func(c *fiber.Ctx) error {
+		username := c.FormValue("username")
+		_ = c.FormValue("password") // Ignore password for demo
+
+		// Always fail for demo purposes
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message":  "Login failed - invalid credentials",
+			"username": username,
+		})
+	})
+
+	// Add login endpoint for brute force testing
+	app.fiberApp.Post("/login", func(c *fiber.Ctx) error {
+		username := c.FormValue("username")
+		_ = c.FormValue("password") // Ignore password for demo
+
+		// Always fail for demo purposes
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message":  "Login failed - invalid credentials",
+			"username": username,
+		})
 	})
 }
 

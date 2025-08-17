@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Challenge - Guard System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .captcha-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .security-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+        }
+
+        .captcha-container h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .captcha-container p {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .captcha-challenge {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 30px 0;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .captcha-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2rem;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .captcha-input:focus {
+            outline: none;
+            border-color: #ff6b6b;
+            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            margin: 10px;
+            min-width: 120px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #6c757d, #5a6268);
+        }
+
+        .attempts-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .challenge-info {
+            background: #e2e3e5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #ff6b6b;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .back-link {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .back-link a {
+            color: #6c757d;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .back-link a:hover {
+            color: #ff6b6b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="captcha-container">
+        <div class="security-icon">🛡️</div>
+        <h1>Security Challenge</h1>
+        <p>We've detected suspicious activity from your connection. Please complete this security challenge to continue.
+        </p>
+
+        <div id="challengeContent">
+            <div class="captcha-challenge" id="challengeQuestion">
+                Loading challenge...
+            </div>
+
+            <input type="text" class="captcha-input" id="captchaAnswer" placeholder="Enter your answer"
+                autocomplete="off">
+
+            <div class="attempts-info" id="attemptsInfo" style="display: none;">
+                <strong>Attempts remaining:</strong> <span id="attemptsCount">3</span>
+            </div>
+
+            <div class="error-message" id="errorMessage" style="display: none;"></div>
+            <div class="success-message" id="successMessage" style="display: none;"></div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Verifying your answer...</p>
+            </div>
+
+            <button class="btn" onclick="submitAnswer()">Submit Answer</button>
+            <button class="btn btn-secondary" onclick="refreshChallenge()">New Challenge</button>
+        </div>
+
+        <div class="challenge-info">
+            <strong>Challenge Type:</strong> <span id="challengeType">Simple Math</span><br>
+            <strong>Difficulty:</strong> <span id="challengeDifficulty">Medium</span><br>
+            <strong>Your IP:</strong> <span id="userIP">Loading...</span>
+        </div>
+
+        <div class="back-link">
+            <a href="/demo">&larr; Back to Demo</a>
+        </div>
+    </div>
+
+    <script>
+        let currentChallenge = null;
+        let attemptsRemaining = 3;
+
+        // Load challenge on page load
+        window.onload = function () {
+            loadChallenge();
+            loadUserInfo();
+        };
+
+        // Allow Enter key to submit
+        document.getElementById('captchaAnswer').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                submitAnswer();
+            }
+        });
+
+        async function loadChallenge() {
+            try {
+                const response = await fetch('/demo/captcha-challenge');
+                const data = await response.json();
+
+                if (data.challenge) {
+                    currentChallenge = data;
+                    document.getElementById('challengeQuestion').textContent = data.challenge.challenge;
+                    document.getElementById('challengeType').textContent = data.challenge.provider || 'Simple Math';
+                    document.getElementById('challengeDifficulty').textContent = data.challenge.metadata?.difficulty || 'Medium';
+
+                    // Show attempts info
+                    document.getElementById('attemptsInfo').style.display = 'block';
+                    document.getElementById('attemptsCount').textContent = data.challenge.max_attempts - data.challenge.attempts;
+                    attemptsRemaining = data.challenge.max_attempts - data.challenge.attempts;
+                } else {
+                    document.getElementById('challengeQuestion').textContent = 'No active challenge found';
+                    document.getElementById('attemptsInfo').style.display = 'none';
+                }
+            } catch (error) {
+                document.getElementById('challengeQuestion').textContent = 'Error loading challenge';
+                showError('Failed to load challenge: ' + error.message);
+            }
+        }
+
+        async function loadUserInfo() {
+            try {
+                const response = await fetch('/demo/user-info');
+                const data = await response.json();
+                document.getElementById('userIP').textContent = data.ip || 'Unknown';
+            } catch (error) {
+                document.getElementById('userIP').textContent = 'Unknown';
+            }
+        }
+
+        async function submitAnswer() {
+            const answer = document.getElementById('captchaAnswer').value.trim();
+
+            if (!answer) {
+                showError('Please enter an answer');
+                return;
+            }
+
+            if (!currentChallenge) {
+                showError('No active challenge found');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            hideMessages();
+
+            try {
+                const response = await fetch('/demo/verify-captcha', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        answer: answer,
+                        challenge_id: currentChallenge.challenge?.id
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showSuccess('✅ Challenge completed successfully! You can now continue browsing.');
+                    setTimeout(() => {
+                        window.location.href = '/demo';
+                    }, 2000);
+                } else {
+                    attemptsRemaining--;
+                    document.getElementById('attemptsCount').textContent = attemptsRemaining;
+
+                    if (attemptsRemaining <= 0) {
+                        showError('❌ Maximum attempts exceeded. Please try again later.');
+                        document.querySelector('.btn').disabled = true;
+                    } else {
+                        showError(`❌ Incorrect answer. ${attemptsRemaining} attempts remaining.`);
+                        document.getElementById('captchaAnswer').value = '';
+                        document.getElementById('captchaAnswer').focus();
+                    }
+                }
+            } catch (error) {
+                showError('Error verifying answer: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        async function refreshChallenge() {
+            hideMessages();
+            document.getElementById('captchaAnswer').value = '';
+
+            try {
+                // Request a new challenge
+                const response = await fetch('/demo/new-captcha', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    await loadChallenge();
+                    showSuccess('New challenge generated');
+                } else {
+                    showError('Failed to generate new challenge');
+                }
+            } catch (error) {
+                showError('Error refreshing challenge: ' + error.message);
+            }
+        }
+
+        function showError(message) {
+            hideMessages();
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function showSuccess(message) {
+            hideMessages();
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+        }
+
+        function hideMessages() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+    </script>
+</body>
+
+</html>
