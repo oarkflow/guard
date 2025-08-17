@@ -384,7 +384,7 @@ func (h *EmailHandler) Priority() int {
 }
 
 // Initialize initializes the handler with configuration
-func (h *EmailHandler) Initialize(config map[string]interface{}) error {
+func (h *EmailHandler) Initialize(config map[string]any) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -414,7 +414,7 @@ func (h *EmailHandler) Initialize(config map[string]interface{}) error {
 	}
 
 	// Parse to addresses
-	if to, ok := config["to"].([]interface{}); ok {
+	if to, ok := config["to"].([]any); ok {
 		h.config.To = make([]string, len(to))
 		for i, addr := range to {
 			if addrStr, ok := addr.(string); ok {
@@ -439,7 +439,7 @@ func (h *EmailHandler) Initialize(config map[string]interface{}) error {
 	}
 
 	// Parse event types
-	if eventTypes, ok := config["event_types"].([]interface{}); ok {
+	if eventTypes, ok := config["event_types"].([]any); ok {
 		h.config.EventTypes = make([]string, len(eventTypes))
 		for i, et := range eventTypes {
 			if etStr, ok := et.(string); ok {
@@ -467,7 +467,7 @@ func (h *EmailHandler) Cleanup() error {
 }
 
 // GetMetrics returns handler metrics
-func (h *EmailHandler) GetMetrics() map[string]interface{} {
+func (h *EmailHandler) GetMetrics() map[string]any {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
@@ -477,7 +477,7 @@ func (h *EmailHandler) GetMetrics() map[string]interface{} {
 		successRate = float64(h.metrics.emailsSent) / float64(totalAttempts)
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"emails_sent":        h.metrics.emailsSent,
 		"events_filtered":    h.metrics.eventsFiltered,
 		"errors":             h.metrics.errors,
