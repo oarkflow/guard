@@ -1,0 +1,151 @@
+{
+    "tcp_protection": {
+        "enable_tcp_protection": true,
+        "connection_rate_limit": 100,
+        "connection_window": "60s",
+        "silent_drop_threshold": 50,
+        "tarpit_threshold": 75,
+        "tarpit_delay": "5s",
+        "max_tarpit_connections": 10,
+        "brute_force_threshold": 10,
+        "brute_force_window": "300s",
+        "cleanup_interval": "60s",
+        "whitelisted_ips": [
+            "127.0.0.1",
+            "::1",
+            "10.0.0.0/8",
+            "172.16.0.0/12",
+            "192.168.0.0/16"
+        ],
+        "blacklisted_ips": [ ]
+    },
+    "tcp_rules": {
+        "enable_rules": true,
+        "rules": [
+            {
+                "name": "allow_localhost",
+                "condition": {
+                    "ip_ranges": [ "127.0.0.1/32", "::1/128" ]
+                },
+                "action": "allow",
+                "priority": 1
+            },
+            {
+                "name": "allow_private_networks",
+                "condition": {
+                    "ip_ranges": [ "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16" ]
+                },
+                "action": "allow",
+                "priority": 2
+            },
+            {
+                "name": "tarpit_suspicious",
+                "condition": {
+                    "connection_count": {
+                        "min": 50,
+                        "max": 74
+                    },
+                    "time_window": "60s"
+                },
+                "action": "tarpit",
+                "priority": 3
+            },
+            {
+                "name": "drop_high_rate",
+                "condition": {
+                    "connection_count": {
+                        "min": 75,
+                        "max": 99
+                    },
+                    "time_window": "60s"
+                },
+                "action": "drop",
+                "priority": 4
+            },
+            {
+                "name": "block_excessive",
+                "condition": {
+                    "connection_count": {
+                        "min": 100
+                    },
+                    "time_window": "60s"
+                },
+                "action": "block",
+                "priority": 5
+            },
+            {
+                "name": "block_brute_force",
+                "condition": {
+                    "failed_attempts": {
+                        "min": 10
+                    },
+                    "time_window": "300s"
+                },
+                "action": "block",
+                "priority": 6
+            }
+        ]
+    },
+    "environments": {
+        "development": {
+            "tcp_protection": {
+                "enable_tcp_protection": true,
+                "connection_rate_limit": 1000,
+                "connection_window": "60s",
+                "silent_drop_threshold": 500,
+                "tarpit_threshold": 750,
+                "tarpit_delay": "1s",
+                "max_tarpit_connections": 50,
+                "brute_force_threshold": 50,
+                "brute_force_window": "300s",
+                "cleanup_interval": "30s",
+                "whitelisted_ips": [
+                    "127.0.0.1",
+                    "::1",
+                    "10.0.0.0/8",
+                    "172.16.0.0/12",
+                    "192.168.0.0/16"
+                ],
+                "blacklisted_ips": [ ]
+            }
+        },
+        "production": {
+            "tcp_protection": {
+                "enable_tcp_protection": true,
+                "connection_rate_limit": 50,
+                "connection_window": "60s",
+                "silent_drop_threshold": 25,
+                "tarpit_threshold": 35,
+                "tarpit_delay": "10s",
+                "max_tarpit_connections": 5,
+                "brute_force_threshold": 5,
+                "brute_force_window": "300s",
+                "cleanup_interval": "120s",
+                "whitelisted_ips": [
+                    "127.0.0.1",
+                    "::1"
+                ],
+                "blacklisted_ips": [ ]
+            }
+        },
+        "testing": {
+            "tcp_protection": {
+                "enable_tcp_protection": false,
+                "connection_rate_limit": 10000,
+                "connection_window": "60s",
+                "silent_drop_threshold": 5000,
+                "tarpit_threshold": 7500,
+                "tarpit_delay": "100ms",
+                "max_tarpit_connections": 100,
+                "brute_force_threshold": 100,
+                "brute_force_window": "300s",
+                "cleanup_interval": "10s",
+                "whitelisted_ips": [
+                    "0.0.0.0/0",
+                    "::/0"
+                ],
+                "blacklisted_ips": [ ]
+            }
+        }
+    }
+}
