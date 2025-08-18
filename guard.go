@@ -8,14 +8,14 @@ import (
 	"strings"
 	"sync"
 	"time"
-
+	
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/oarkflow/log"
-
+	
 	"github.com/oarkflow/guard/pkg/api"
 	"github.com/oarkflow/guard/pkg/config"
-
+	
 	"github.com/oarkflow/guard/pkg/engine"
 	"github.com/oarkflow/guard/pkg/events"
 	"github.com/oarkflow/guard/pkg/plugins"
@@ -70,9 +70,9 @@ func NewApplication(configSource string, opts ...Options) (*Application, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to detect config source: %w", err)
 	}
-
+	
 	log.Info().Str("loader_type", loader.GetSourceType()).Msg("Using configuration loader")
-
+	
 	// Create config manager with detected loader
 	var configManager *config.Manager
 	if loader.GetSourceType() == "single-file" {
@@ -80,7 +80,7 @@ func NewApplication(configSource string, opts ...Options) (*Application, error) 
 	} else {
 		configManager = config.NewManagerWithLoader(loader)
 	}
-
+	
 	// Load initial configuration
 	if err := configManager.LoadInitialConfig(); err != nil {
 		// For single-file configs, try to create default if file doesn't exist
@@ -90,7 +90,7 @@ func NewApplication(configSource string, opts ...Options) (*Application, error) 
 				log.Warn().Err(err).Msg("Could not save default config")
 			}
 			log.Info().Str("config_file", configSource).Msg("Created default configuration file")
-
+			
 			// Reload the config manager with the new file
 			if err := configManager.LoadInitialConfig(); err != nil {
 				return nil, fmt.Errorf("failed to load initial config: %w", err)
@@ -99,27 +99,27 @@ func NewApplication(configSource string, opts ...Options) (*Application, error) 
 			return nil, fmt.Errorf("failed to load initial config: %w", err)
 		}
 	}
-
+	
 	cfg := configManager.GetConfig()
-
+	
 	// Create state store
 	storeFactory := store.NewStoreFactory()
 	stateStore, err := storeFactory.CreateStore(cfg.Store)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create state store: %w", err)
 	}
-
+	
 	// Create plugin registry
 	registry := plugins.NewPluginRegistry()
-
+	
 	// Create event bus
 	eventBus := events.NewEventBus(registry, cfg.Events.BufferSize, cfg.Events.WorkerCount)
-
+	
 	// Create rule engine
 	ruleEngine := engine.NewRuleEngine(registry, eventBus, stateStore)
 	// Apply initial engine config from loaded configuration (ensures single-file and directory-based configs take effect at startup)
 	ruleEngine.UpdateConfig(cfg.Engine)
-
+	
 	app := &Application{
 		enableTCPMiddleware:  true,
 		enableDdosMiddleware: true,
@@ -132,7 +132,7 @@ func NewApplication(configSource string, opts ...Options) (*Application, error) 
 	for _, opt := range opts {
 		opt(app)
 	}
-
+	
 	if app.App == nil {
 		// Create default Fiber app if not provided
 		app.App = fiber.New(fiber.Config{
@@ -149,7 +149,7 @@ func NewApplication(configSource string, opts ...Options) (*Application, error) 
 		})
 		app.App.Use(recover.New())
 	}
-
+	
 	if app.enableTCPMiddleware {
 		tcpConfig := tcp.TCPProtectionConfig{
 			EnableTCPProtection:  cfg.TCPProtection.EnableTCPProtection,
@@ -171,32 +171,32 @@ func NewApplication(configSource string, opts ...Options) (*Application, error) 
 		app.tcpHandler = tcpHandler
 		app.App.Use(app.createTCPProtectionMiddleware())
 	}
-
+	
 	if app.enableDdosMiddleware {
-		app.App.Use(app.ddosProtectionMiddleware())
+		app.App.Use(app.guard())
 	}
-
+	
 	return app, nil
 }
 
 // Initialize initializes the application components
 func (app *Application) Initialize() error {
 	log.Info().Msg("Initializing application components...")
-
+	
 	// Register built-in plugins
 	if err := app.registerBuiltinPlugins(); err != nil {
 		return fmt.Errorf("failed to register builtin plugins: %w", err)
 	}
-
+	
 	// Setup config reload callback
 	app.configManager.AddReloadCallback(app.handleConfigReload)
-
+	
 	// Setup routes
 	app.setupRoutes()
-
+	
 	// Setup configuration API
 	app.setupConfigAPI()
-
+	
 	log.Info().Msg("Application initialized successfully")
 	return nil
 }
@@ -232,17 +232,17 @@ func (app *Application) GetConfig() *config.Manager {
 // registerBuiltinPlugins registers the built-in plugins
 func (app *Application) registerBuiltinPlugins() error {
 	cfg := app.configManager.GetConfig()
-
+	
 	// Register the generic configurable detector (replaces all specific detectors)
 	genericDetector := detectors.NewGenericDetector()
-
+	
 	// Prepare configuration with state store
 	genericConfig := cfg.Plugins.Detectors["generic_detector"]
 	if genericConfig.Parameters == nil {
 		genericConfig.Parameters = make(map[string]any)
 	}
 	genericConfig.Parameters["state_store"] = app.stateStore
-
+	
 	if err := app.registry.RegisterDetector(
 		genericDetector,
 		plugins.PluginMetadata{
@@ -256,7 +256,7 @@ func (app *Application) registerBuiltinPlugins() error {
 	); err != nil {
 		return fmt.Errorf("failed to register generic detector: %w", err)
 	}
-
+	
 	// Register action plugins
 	blockAction := actions.NewBlockAction(app.stateStore)
 	if err := app.registry.RegisterAction(
@@ -272,7 +272,7 @@ func (app *Application) registerBuiltinPlugins() error {
 	); err != nil {
 		return fmt.Errorf("failed to register block action: %w", err)
 	}
-
+	
 	incrementalBlockAction := actions.NewIncrementalBlockAction(app.stateStore)
 	if err := app.registry.RegisterAction(
 		incrementalBlockAction,
@@ -287,7 +287,7 @@ func (app *Application) registerBuiltinPlugins() error {
 	); err != nil {
 		return fmt.Errorf("failed to register incremental block action: %w", err)
 	}
-
+	
 	suspensionAction := actions.NewSuspensionAction(app.stateStore)
 	if err := app.registry.RegisterAction(
 		suspensionAction,
@@ -302,7 +302,7 @@ func (app *Application) registerBuiltinPlugins() error {
 	); err != nil {
 		return fmt.Errorf("failed to register suspension action: %w", err)
 	}
-
+	
 	accountSuspendAction := actions.NewAccountSuspendAction(app.stateStore)
 	if err := app.registry.RegisterAction(
 		accountSuspendAction,
@@ -317,7 +317,7 @@ func (app *Application) registerBuiltinPlugins() error {
 	); err != nil {
 		return fmt.Errorf("failed to register account suspend action: %w", err)
 	}
-
+	
 	warningAction := actions.NewWarningAction(app.stateStore)
 	if err := app.registry.RegisterAction(
 		warningAction,
@@ -332,7 +332,7 @@ func (app *Application) registerBuiltinPlugins() error {
 	); err != nil {
 		return fmt.Errorf("failed to register warning action: %w", err)
 	}
-
+	
 	captchaAction := actions.NewCaptchaAction(app.stateStore)
 	if err := app.registry.RegisterAction(
 		captchaAction,
@@ -347,7 +347,7 @@ func (app *Application) registerBuiltinPlugins() error {
 	); err != nil {
 		return fmt.Errorf("failed to register captcha action: %w", err)
 	}
-
+	
 	multipleSignupAction := actions.NewMultipleSignupAction(app.stateStore)
 	if err := app.registry.RegisterAction(
 		multipleSignupAction,
@@ -362,7 +362,7 @@ func (app *Application) registerBuiltinPlugins() error {
 	); err != nil {
 		return fmt.Errorf("failed to register multiple signup action: %w", err)
 	}
-
+	
 	// Register event handler plugins
 	securityLogger := handlers.NewSecurityLoggerHandler()
 	if err := app.registry.RegisterHandler(
@@ -378,7 +378,7 @@ func (app *Application) registerBuiltinPlugins() error {
 	); err != nil {
 		return fmt.Errorf("failed to register security logger handler: %w", err)
 	}
-
+	
 	webhookHandler := handlers.NewWebhookHandler()
 	if err := app.registry.RegisterHandler(
 		webhookHandler,
@@ -393,7 +393,7 @@ func (app *Application) registerBuiltinPlugins() error {
 	); err != nil {
 		return fmt.Errorf("failed to register webhook handler: %w", err)
 	}
-
+	
 	emailHandler := handlers.NewEmailHandler()
 	if err := app.registry.RegisterHandler(
 		emailHandler,
@@ -408,7 +408,7 @@ func (app *Application) registerBuiltinPlugins() error {
 	); err != nil {
 		return fmt.Errorf("failed to register email handler: %w", err)
 	}
-
+	
 	metricsHandler := handlers.NewMetricsHandler()
 	if err := app.registry.RegisterHandler(
 		metricsHandler,
@@ -423,12 +423,12 @@ func (app *Application) registerBuiltinPlugins() error {
 	); err != nil {
 		return fmt.Errorf("failed to register metrics handler: %w", err)
 	}
-
+	
 	return nil
 }
 
-// ddosProtectionMiddleware creates the DDoS protection middleware
-func (app *Application) ddosProtectionMiddleware() fiber.Handler {
+// guard creates the DDoS protection middleware
+func (app *Application) guard() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// Build request context
 		reqCtx := &plugins.RequestContext{
@@ -445,20 +445,20 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 			SessionID:     c.Get("X-Session-ID"),
 			Metadata:      make(map[string]any),
 		}
-
+		
 		// Copy headers
 		for key, values := range c.GetReqHeaders() {
 			if len(values) > 0 {
 				reqCtx.Headers[key] = values[0]
 			}
 		}
-
+		
 		// Process request through rule engine
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-
+		
 		result := app.ruleEngine.ProcessRequest(ctx, reqCtx)
-
+		
 		// Handle processing errors
 		if result.Error != nil {
 			log.Error().Err(result.Error).Msg("Rule engine error")
@@ -470,12 +470,12 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 				})
 			}
 		}
-
+		
 		// Check if request should be blocked
 		if !result.Allowed {
 			// Log the block
 			log.Warn().Str("ip", reqCtx.IP).Interface("detections", result.Detections).Msg("Request blocked")
-
+			
 			// Return appropriate response based on highest severity action
 			for _, action := range result.Actions {
 				switch action {
@@ -494,7 +494,7 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 									"reason":     blockDetails.Reason,
 									"blocked_at": blockDetails.BlockedAt.Format(time.RFC3339),
 								}
-
+								
 								// Add retry information for temporary blocks
 								if !blockDetails.IsPermanent {
 									if blockDetails.RemainingTime > 0 {
@@ -505,22 +505,22 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 										response["retry_in_seconds"] = 0
 									}
 								}
-
+								
 								// Add violation information
 								if blockDetails.ViolationCount > 0 {
 									response["violation_count"] = blockDetails.ViolationCount
 								}
-
+								
 								// Set appropriate HTTP headers
 								if !blockDetails.IsPermanent && blockDetails.RemainingTime > 0 {
 									c.Set("Retry-After", fmt.Sprintf("%d", int(blockDetails.RemainingTime.Seconds())))
 								}
-
+								
 								return c.Status(fiber.StatusTooManyRequests).JSON(response)
 							}
 						}
 					}
-
+					
 					// Fallback to basic response if detailed info is not available
 					return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 						"error":      "Access denied",
@@ -528,7 +528,7 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 						"request_id": c.Get("X-Request-ID"),
 						"blocked":    true,
 					})
-
+				
 				case "incremental_block_action":
 					// Handle incremental blocking
 					return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
@@ -538,7 +538,7 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 						"blocked":    true,
 						"reason":     "Rate limiting violation",
 					})
-
+				
 				case "captcha_action":
 					// Handle CAPTCHA challenge
 					captchaAction, exists := app.registry.GetAction("captcha_action")
@@ -563,7 +563,7 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 						"blocked": true,
 						"reason":  "Bot detection",
 					})
-
+				
 				case "warning_action":
 					// Handle warning (still allow but add warning)
 					warningAction, exists := app.registry.GetAction("warning_action")
@@ -576,7 +576,7 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 							}
 						}
 					}
-
+				
 				case "multiple_signup_action":
 					// Handle multiple signup blocking
 					multipleSignupAction, exists := app.registry.GetAction("multiple_signup_action")
@@ -590,18 +590,18 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 									"blocked":    true,
 									"reason":     "Multiple signup violation",
 								}
-
+								
 								if info != nil && info.BlockDuration > 0 {
 									response["retry_after"] = info.LastSignup.Add(info.BlockDuration).Format(time.RFC3339)
 								}
-
+								
 								return c.Status(fiber.StatusTooManyRequests).JSON(response)
 							}
 						}
 					}
 				}
 			}
-
+			
 			// If no specific action handler matched, return generic block response
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"error":      "Access denied",
@@ -611,13 +611,13 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 				"reason":     "Security policy violation",
 			})
 		}
-
+		
 		// Add security information to response headers
 		if len(result.Detections) > 0 {
 			c.Set("X-Security-Scan", "completed")
 			c.Set("X-Threat-Level", fmt.Sprintf("%d", len(result.Detections)))
 		}
-
+		
 		return c.Next()
 	}
 }
@@ -628,41 +628,41 @@ func (app *Application) createTCPProtectionMiddleware() fiber.Handler {
 		if app.tcpMiddleware == nil {
 			return c.Next()
 		}
-
+		
 		// Create a fake net.Addr from the request
 		remoteAddr := &tcpAddr{
 			network: "tcp",
 			address: c.IP() + ":" + c.Port(),
 		}
-
+		
 		// Check connection with TCP protection
 		action, connInfo, err := app.tcpMiddleware.GetProtection().CheckConnection(c.Context(), remoteAddr)
 		if err != nil {
 			log.Printf("TCP protection check failed for %s: %v", c.IP(), err)
 			return c.Next() // Continue on error
 		}
-
+		
 		// Handle different actions
 		switch action {
 		case tcp.ActionAllow:
 			// Connection is allowed, proceed with request
 			return c.Next()
-
+		
 		case tcp.ActionDrop:
 			// Silent drop - close connection without response
 			log.Warn().Str("ip", connInfo.IP).Int64("connections", connInfo.ConnectionCount).Msg("Silently dropping HTTP request")
 			return c.SendStatus(fiber.StatusNoContent)
-
+		
 		case tcp.ActionTarpit:
 			// Tarpit - delay the response
 			log.Warn().Str("ip", connInfo.IP).Int64("connections", connInfo.ConnectionCount).Msg("Tarpitting HTTP request")
 			time.Sleep(app.tcpConfig.TarpitDelay)
 			return c.Next()
-
+		
 		case tcp.ActionBlock:
 			// Block - return error response
 			log.Warn().Str("ip", connInfo.IP).Int64("connections", connInfo.ConnectionCount).Int64("failed", connInfo.FailedAttempts).Msg("Blocking HTTP request")
-
+			
 			response := fiber.Map{
 				"error":            "Request blocked by TCP-level DDoS protection",
 				"reason":           "Too many connections",
@@ -672,10 +672,10 @@ func (app *Application) createTCPProtectionMiddleware() fiber.Handler {
 				"blocked_at":       connInfo.ConnectedAt.Format(time.RFC3339),
 				"retry_after":      int(app.tcpConfig.ConnectionWindow.Seconds()),
 			}
-
+			
 			c.Set("Retry-After", fmt.Sprintf("%d", int(app.tcpConfig.ConnectionWindow.Seconds())))
 			return c.Status(fiber.StatusTooManyRequests).JSON(response)
-
+		
 		default:
 			// Unknown action, default to allow
 			log.Warn().Str("action", action.String()).Str("ip", c.IP()).Msg("Unknown TCP action, allowing")
@@ -708,7 +708,7 @@ func (app *Application) GetRealIP(c *fiber.Ctx) string {
 			return ip.String()
 		}
 	}
-
+	
 	// Check X-Real-IP header
 	xri := c.Get("X-Real-IP")
 	if xri != "" {
@@ -716,7 +716,7 @@ func (app *Application) GetRealIP(c *fiber.Ctx) string {
 			return ip.String()
 		}
 	}
-
+	
 	// Fall back to connection IP
 	return c.IP()
 }
@@ -730,22 +730,22 @@ func (app *Application) setupRoutes() {
 			"timestamp": time.Now(),
 			"version":   "2.0.0",
 		}
-
+		
 		// Check rule engine health
 		if err := app.ruleEngine.Health(); err != nil {
 			health["status"] = "unhealthy"
 			health["rule_engine_error"] = err.Error()
 		}
-
+		
 		// Check store health
 		if err := app.stateStore.Health(); err != nil {
 			health["status"] = "unhealthy"
 			health["store_error"] = err.Error()
 		}
-
+		
 		return c.JSON(health)
 	})
-
+	
 	// Metrics endpoint
 	app.App.Get("/metrics", func(c *fiber.Ctx) error {
 		metrics := map[string]any{
@@ -753,7 +753,7 @@ func (app *Application) setupRoutes() {
 			"event_bus":   app.eventBus.GetStats(),
 			"store":       app.stateStore.GetStats(),
 		}
-
+		
 		// Add plugin metrics
 		pluginMetrics := make(map[string]any)
 		for _, detector := range app.registry.GetAllDetectors() {
@@ -763,34 +763,34 @@ func (app *Application) setupRoutes() {
 			pluginMetrics[action.Name()] = action.GetMetrics()
 		}
 		metrics["plugins"] = pluginMetrics
-
+		
 		// Add TCP protection metrics
 		if app.tcpMiddleware != nil {
 			metrics["tcp_protection"] = app.tcpMiddleware.GetMetrics()
 		}
-
+		
 		return c.JSON(metrics)
 	})
-
+	
 	// Plugin management endpoints
 	app.App.Get("/admin/plugins", func(c *fiber.Ctx) error {
 		return c.JSON(app.registry.GetAllPluginMetadata())
 	})
-
+	
 	// TCP protection management endpoints
 	if app.tcpHandler != nil {
 		tcpAdmin := app.App.Group("/admin/tcp")
-
+		
 		tcpAdmin.Get("/metrics", func(c *fiber.Ctx) error {
 			metrics := app.tcpMiddleware.GetMetrics()
 			return c.JSON(metrics)
 		})
-
+		
 		tcpAdmin.Get("/connections", func(c *fiber.Ctx) error {
 			connections := app.tcpMiddleware.GetActiveConnections()
 			return c.JSON(fiber.Map{"active_connections": connections})
 		})
-
+		
 		tcpAdmin.Post("/whitelist", func(c *fiber.Ctx) error {
 			ip := c.FormValue("ip")
 			if ip == "" {
@@ -799,7 +799,7 @@ func (app *Application) setupRoutes() {
 			app.tcpMiddleware.GetProtection().AddToWhitelist(ip)
 			return c.JSON(fiber.Map{"message": fmt.Sprintf("IP %s added to whitelist", ip)})
 		})
-
+		
 		tcpAdmin.Delete("/whitelist", func(c *fiber.Ctx) error {
 			ip := c.FormValue("ip")
 			if ip == "" {
@@ -808,7 +808,7 @@ func (app *Application) setupRoutes() {
 			app.tcpMiddleware.GetProtection().RemoveFromWhitelist(ip)
 			return c.JSON(fiber.Map{"message": fmt.Sprintf("IP %s removed from whitelist", ip)})
 		})
-
+		
 		tcpAdmin.Post("/blacklist", func(c *fiber.Ctx) error {
 			ip := c.FormValue("ip")
 			if ip == "" {
@@ -817,7 +817,7 @@ func (app *Application) setupRoutes() {
 			app.tcpMiddleware.GetProtection().AddToBlacklist(ip)
 			return c.JSON(fiber.Map{"message": fmt.Sprintf("IP %s added to blacklist", ip)})
 		})
-
+		
 		tcpAdmin.Delete("/blacklist", func(c *fiber.Ctx) error {
 			ip := c.FormValue("ip")
 			if ip == "" {
@@ -827,7 +827,7 @@ func (app *Application) setupRoutes() {
 			return c.JSON(fiber.Map{"message": fmt.Sprintf("IP %s removed from blacklist", ip)})
 		})
 	}
-
+	
 	// Serve configuration dashboard
 	app.App.Static("/config", "./web")
 	app.App.Get("/config", func(c *fiber.Ctx) error {
@@ -846,13 +846,13 @@ func (app *Application) setupConfigAPI() {
 			configDir = "config"
 		}
 	}
-
+	
 	// Create configuration API
 	configAPI := api.NewConfigAPI(app.configManager, configDir)
-
+	
 	// Register API routes
 	configAPI.RegisterRoutes(app.App)
-
+	
 	log.Info().Str("config_dir", configDir).Msg("Configuration API initialized")
 }
 
@@ -860,36 +860,36 @@ func (app *Application) setupConfigAPI() {
 func (app *Application) Start(ctx context.Context) error {
 	cfg := app.configManager.GetConfig()
 	address := fmt.Sprintf("%s:%d", cfg.Server.Address, cfg.Server.Port)
-
+	
 	log.Info().Msg("🛡️  DDoS Protection System v2.0 starting on " + address)
 	log.Info().Msgf("📊 Metrics available at http://%s/metrics", address)
 	log.Info().Msgf("🔧 Health check at http://%s/health", address)
-
+	
 	// Print plugin information
 	metadata := app.registry.GetAllPluginMetadata()
 	log.Info().Int("plugin_count", len(metadata)).Msg("📦 Loaded plugins")
 	for name, meta := range metadata {
 		log.Info().Str("name", name).Str("version", meta.Version).Str("type", meta.Type).Msg("Plugin loaded")
 	}
-
+	
 	// Start config watcher
 	if err := app.configManager.StartWatching(ctx); err != nil {
 		log.Warn().Err(err).Msg("Failed to start config watcher")
 	} else {
 		log.Info().Msg("📁 Config file watcher started")
 	}
-
+	
 	return app.App.Listen(address)
 }
 
 func (app *Application) StartTLS(ctx context.Context) error {
 	cfg := app.configManager.GetConfig()
 	address := fmt.Sprintf("%s:%d", cfg.Server.Address, cfg.Server.TLSPort)
-
+	
 	log.Info().Msg("🛡️  DDoS Protection System v2.0 starting on " + address)
 	log.Info().Msgf("📊 Metrics available at https://%s/metrics", address)
 	log.Info().Msgf("🔧 Health check at https://%s/health", address)
-
+	
 	// Print plugin information
 	metadata := app.registry.GetAllPluginMetadata()
 	log.Info().Int("plugin_count", len(metadata)).Msg("📦 Loaded plugins")
@@ -900,7 +900,7 @@ func (app *Application) StartTLS(ctx context.Context) error {
 			Str("type", meta.Type).
 			Msg("Plugin loaded")
 	}
-
+	
 	// Start config watcher
 	if err := app.configManager.StartWatching(ctx); err != nil {
 		log.Warn().Err(err).Msg("Failed to start config watcher")
@@ -912,7 +912,7 @@ func (app *Application) StartTLS(ctx context.Context) error {
 		log.Error().Msg("TLS certificate and key files must be provided")
 		return fmt.Errorf("TLS certificate and key files must be provided")
 	}
-
+	
 	// Start Fiber with TLS
 	return app.App.ListenTLS(address, cfg.Server.TLSCertFile, cfg.Server.TLSKeyFile)
 }
@@ -920,20 +920,20 @@ func (app *Application) StartTLS(ctx context.Context) error {
 // Shutdown gracefully shuts down the application
 func (app *Application) Shutdown() error {
 	log.Info().Msg("Shutting down application...")
-
+	
 	// Stop config watcher
 	app.configManager.StopWatching()
-
+	
 	// Shutdown rule engine
 	if err := app.ruleEngine.Shutdown(); err != nil {
 		log.Error().Err(err).Msg("Error shutting down rule engine")
 	}
-
+	
 	// Shutdown Fiber app
 	if err := app.App.Shutdown(); err != nil {
 		log.Error().Err(err).Msg("Error shutting down Fiber app")
 	}
-
+	
 	log.Info().Msg("Application shutdown complete")
 	return nil
 }
@@ -942,18 +942,18 @@ func (app *Application) Shutdown() error {
 func (app *Application) handleConfigReload(newConfig *config.SystemConfig) error {
 	app.mu.Lock()
 	defer app.mu.Unlock()
-
+	
 	log.Info().Msg("Handling configuration reload...")
-
+	
 	// Update rule engine with new action rules
 	app.ruleEngine.UpdateConfig(newConfig.Engine)
-
+	
 	// Re-register plugins with new configurations
 	if err := app.reloadPlugins(newConfig); err != nil {
 		log.Error().Err(err).Msg("Failed to reload plugins")
 		return err
 	}
-
+	
 	log.Info().Msg("Configuration reload completed successfully")
 	return nil
 }
@@ -971,7 +971,7 @@ func (app *Application) reloadPlugins(cfg *config.SystemConfig) error {
 			if name == "generic_detector" {
 				params["state_store"] = app.stateStore
 			}
-
+			
 			if err := detector.Initialize(params); err != nil {
 				log.Error().Str("detector", name).Err(err).Msg("Failed to reinitialize detector")
 			} else {
@@ -979,7 +979,7 @@ func (app *Application) reloadPlugins(cfg *config.SystemConfig) error {
 			}
 		}
 	}
-
+	
 	// Update action configurations
 	for name, pluginConfig := range cfg.Plugins.Actions {
 		if action, exists := app.registry.GetAction(name); exists {
@@ -990,13 +990,13 @@ func (app *Application) reloadPlugins(cfg *config.SystemConfig) error {
 			}
 		}
 	}
-
+	
 	// Update handler configurations
 	// Note: We'll iterate through configured handlers since registry doesn't expose GetAllHandlers
 	for name := range cfg.Plugins.Handlers {
 		// We can't directly access handlers from registry, so we'll log the configuration update
 		log.Info().Str("handler", name).Msg("Handler configuration updated")
 	}
-
+	
 	return nil
 }
