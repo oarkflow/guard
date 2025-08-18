@@ -1,0 +1,732 @@
+{
+    "server": {
+        "address": "0.0.0.0",
+        "port": 8088,
+        "read_timeout": 10000000000,
+        "write_timeout": 10000000000,
+        "idle_timeout": 60000000000,
+        "max_connections": 10000,
+        "enable_prefork": false,
+        "body_limit": 10485760,
+        "trusted_proxies": [ "127.0.0.1", "::1" ]
+    },
+    "engine": {
+        "max_concurrent_requests": 1000,
+        "request_timeout": 30000000000,
+        "enable_metrics": true,
+        "enable_events": true,
+        "default_action": "allow",
+        "failure_mode": "allow",
+        "advanced_rules": [
+            {
+                "name": "IPBlackListRule",
+                "description": "Block requests from blacklisted IP addresses and ranges",
+                "type": "ip_filtering",
+                "detectors": [
+                    {
+                        "name": "ip_blacklist_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "static_blacklist": [
+                                "192.168.1.100",
+                                "10.0.0.0/8",
+                                "172.16.0.0/12"
+                            ],
+                            "dynamic_blacklist": true,
+                            "threat_intelligence_feeds": [
+                                "malware_ips",
+                                "botnet_ips",
+                                "tor_exit_nodes",
+                                "known_attackers"
+                            ],
+                            "reputation_threshold": 0.3,
+                            "auto_blacklist_threshold": 10,
+                            "blacklist_duration": "24h"
+                        },
+                        "actions": [
+                            {
+                                "name": "block_action",
+                                "condition": {
+                                    "min_severity": 1,
+                                    "min_confidence": 0.9
+                                }
+                            },
+                            {
+                                "name": "security_alert_action",
+                                "condition": {
+                                    "min_severity": 7,
+                                    "min_confidence": 0.9
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 100,
+                "enabled": true
+            },
+            {
+                "name": "UnusualGeolocationRule",
+                "description": "Detect access from unusual geographic locations",
+                "type": "geolocation_analysis",
+                "detectors": [
+                    {
+                        "name": "unusual_geo_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "baseline_countries": [ "US", "CA", "GB", "DE", "FR" ],
+                            "high_risk_countries": [ "CN", "RU", "KP", "IR", "SY" ],
+                            "user_geo_profiling": true,
+                            "unusual_country_threshold": 0.1,
+                            "first_time_country_detection": true,
+                            "geo_clustering_analysis": true,
+                            "vpn_tor_detection": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 3,
+                                    "min_confidence": 0.6
+                                }
+                            },
+                            {
+                                "name": "captcha_action",
+                                "condition": {
+                                    "min_severity": 5,
+                                    "min_confidence": 0.7
+                                }
+                            },
+                            {
+                                "name": "geo_block_action",
+                                "condition": {
+                                    "min_severity": 7,
+                                    "min_confidence": 0.8
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 85,
+                "enabled": true
+            },
+            {
+                "name": "GeoVelocityRule",
+                "description": "Detect impossible travel patterns based on geographic velocity",
+                "type": "geolocation_analysis",
+                "detectors": [
+                    {
+                        "name": "geo_velocity_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "max_travel_speed_kmh": 1000,
+                            "impossible_travel_threshold": "30m",
+                            "track_user_locations": true,
+                            "track_ip_locations": true,
+                            "velocity_calculation_method": "haversine",
+                            "teleportation_detection": true,
+                            "frequent_traveler_exceptions": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 4,
+                                    "min_confidence": 0.7
+                                }
+                            },
+                            {
+                                "name": "session_verify_action",
+                                "condition": {
+                                    "min_severity": 6,
+                                    "min_confidence": 0.8
+                                }
+                            },
+                            {
+                                "name": "account_suspend_action",
+                                "condition": {
+                                    "min_severity": 8,
+                                    "min_confidence": 0.9
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 88,
+                "enabled": true
+            },
+            {
+                "name": "TrafficVolumeSpikeRule",
+                "description": "Detect unusual spikes in traffic volume",
+                "type": "traffic_analysis",
+                "detectors": [
+                    {
+                        "name": "traffic_volume_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "baseline_requests_per_minute": 100,
+                            "spike_threshold_multiplier": 5.0,
+                            "sustained_spike_duration": "5m",
+                            "volume_analysis_window": "10m",
+                            "ddos_detection": true,
+                            "flash_crowd_detection": true,
+                            "organic_vs_synthetic_analysis": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 3,
+                                    "min_confidence": 0.6
+                                }
+                            },
+                            {
+                                "name": "rate_limit_action",
+                                "condition": {
+                                    "min_severity": 5,
+                                    "min_confidence": 0.7
+                                }
+                            },
+                            {
+                                "name": "ddos_mitigation_action",
+                                "condition": {
+                                    "min_severity": 7,
+                                    "min_confidence": 0.8
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 90,
+                "enabled": true
+            },
+            {
+                "name": "AnomalousRequestFrequencyRule",
+                "description": "Detect anomalous request frequency patterns",
+                "type": "frequency_analysis",
+                "detectors": [
+                    {
+                        "name": "request_frequency_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "frequency_analysis_methods": [
+                                "statistical_outlier",
+                                "machine_learning",
+                                "time_series_analysis"
+                            ],
+                            "anomaly_detection_sensitivity": "medium",
+                            "baseline_learning_period": "24h",
+                            "frequency_patterns": [
+                                "burst_patterns",
+                                "periodic_patterns",
+                                "gradual_increase_patterns"
+                            ],
+                            "user_behavior_profiling": true,
+                            "endpoint_specific_analysis": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 2,
+                                    "min_confidence": 0.5
+                                }
+                            },
+                            {
+                                "name": "frequency_analysis_action",
+                                "condition": {
+                                    "min_severity": 4,
+                                    "min_confidence": 0.6
+                                }
+                            },
+                            {
+                                "name": "adaptive_rate_limit_action",
+                                "condition": {
+                                    "min_severity": 6,
+                                    "min_confidence": 0.7
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 80,
+                "enabled": true
+            },
+            {
+                "name": "TorProxyVPNAccessRule",
+                "description": "Detect and handle access through Tor, proxies, and VPNs",
+                "type": "anonymization_detection",
+                "detectors": [
+                    {
+                        "name": "anonymization_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "tor_exit_node_detection": true,
+                            "proxy_detection": true,
+                            "vpn_detection": true,
+                            "anonymization_services": [
+                                "tor",
+                                "i2p",
+                                "freenet",
+                                "commercial_vpns",
+                                "proxy_services"
+                            ],
+                            "detection_methods": [
+                                "ip_reputation",
+                                "dns_analysis",
+                                "traffic_analysis",
+                                "timing_analysis"
+                            ],
+                            "whitelist_legitimate_vpns": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 3,
+                                    "min_confidence": 0.7
+                                }
+                            },
+                            {
+                                "name": "captcha_action",
+                                "condition": {
+                                    "min_severity": 5,
+                                    "min_confidence": 0.8
+                                }
+                            },
+                            {
+                                "name": "anonymization_block_action",
+                                "condition": {
+                                    "min_severity": 7,
+                                    "min_confidence": 0.9
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 85,
+                "enabled": true
+            },
+            {
+                "name": "UnusualIPRangeRule",
+                "description": "Detect access from unusual IP ranges or ASNs",
+                "type": "network_analysis",
+                "detectors": [
+                    {
+                        "name": "ip_range_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "baseline_asns": [ "AS15169", "AS8075", "AS13335" ],
+                            "suspicious_asns": [ "AS4134", "AS4837", "AS9829" ],
+                            "cloud_provider_detection": true,
+                            "hosting_provider_detection": true,
+                            "residential_vs_datacenter": true,
+                            "ip_reputation_scoring": true,
+                            "asn_reputation_analysis": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 2,
+                                    "min_confidence": 0.6
+                                }
+                            },
+                            {
+                                "name": "network_analysis_action",
+                                "condition": {
+                                    "min_severity": 4,
+                                    "min_confidence": 0.7
+                                }
+                            },
+                            {
+                                "name": "asn_block_action",
+                                "condition": {
+                                    "min_severity": 6,
+                                    "min_confidence": 0.8
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 75,
+                "enabled": true
+            },
+            {
+                "name": "AbnormalReferrerRule",
+                "description": "Detect abnormal referrer patterns and potential referrer spoofing",
+                "type": "referrer_analysis",
+                "detectors": [
+                    {
+                        "name": "referrer_analysis_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "legitimate_referrers": [
+                                "google.com",
+                                "bing.com",
+                                "yahoo.com",
+                                "duckduckgo.com"
+                            ],
+                            "suspicious_referrer_patterns": [
+                                "(?i)(hack|exploit|attack)",
+                                "(?i)(bot|crawler|spider)",
+                                "(?i)(malware|virus|trojan)"
+                            ],
+                            "referrer_spoofing_detection": true,
+                            "missing_referrer_analysis": true,
+                            "referrer_chain_validation": true,
+                            "social_media_referrer_validation": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 2,
+                                    "min_confidence": 0.5
+                                }
+                            },
+                            {
+                                "name": "referrer_validation_action",
+                                "condition": {
+                                    "min_severity": 4,
+                                    "min_confidence": 0.6
+                                }
+                            },
+                            {
+                                "name": "block_action",
+                                "condition": {
+                                    "min_severity": 6,
+                                    "min_confidence": 0.8
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 70,
+                "enabled": true
+            },
+            {
+                "name": "SuspiciousPayloadSizeRule",
+                "description": "Detect suspicious payload sizes that may indicate attacks",
+                "type": "payload_analysis",
+                "detectors": [
+                    {
+                        "name": "payload_size_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "normal_payload_ranges": {
+                                "GET": { "min": 0, "max": 2048 },
+                                "POST": { "min": 0, "max": 1048576 },
+                                "PUT": { "min": 0, "max": 10485760 },
+                                "DELETE": { "min": 0, "max": 1024 }
+                            },
+                            "suspicious_size_patterns": [
+                                "extremely_large_payloads",
+                                "extremely_small_payloads",
+                                "unusual_size_for_endpoint",
+                                "size_based_attacks"
+                            ],
+                            "compression_bomb_detection": true,
+                            "zip_bomb_detection": true,
+                            "payload_entropy_analysis": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 3,
+                                    "min_confidence": 0.6
+                                }
+                            },
+                            {
+                                "name": "payload_analysis_action",
+                                "condition": {
+                                    "min_severity": 5,
+                                    "min_confidence": 0.7
+                                }
+                            },
+                            {
+                                "name": "block_action",
+                                "condition": {
+                                    "min_severity": 7,
+                                    "min_confidence": 0.8
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 78,
+                "enabled": true
+            }
+        ]
+    },
+    "store": {
+        "type": "memory",
+        "address": "",
+        "password": "",
+        "database": 0,
+        "prefix": "traffic_guard:",
+        "max_retries": 3,
+        "timeout": 5000000000,
+        "options": {
+            "cleanup_interval": "1m",
+            "max_memory_usage": "250MB"
+        }
+    },
+    "events": {
+        "buffer_size": 2500,
+        "worker_count": 10,
+        "enable_async": true,
+        "retry_attempts": 3
+    },
+    "plugins": {
+        "detectors": {
+            "ip_blacklist_detector": {
+                "enabled": true,
+                "priority": 100,
+                "parameters": { }
+            },
+            "unusual_geo_detector": {
+                "enabled": true,
+                "priority": 85,
+                "parameters": { }
+            },
+            "geo_velocity_detector": {
+                "enabled": true,
+                "priority": 88,
+                "parameters": { }
+            },
+            "traffic_volume_detector": {
+                "enabled": true,
+                "priority": 90,
+                "parameters": { }
+            },
+            "request_frequency_detector": {
+                "enabled": true,
+                "priority": 80,
+                "parameters": { }
+            },
+            "anonymization_detector": {
+                "enabled": true,
+                "priority": 85,
+                "parameters": { }
+            },
+            "ip_range_detector": {
+                "enabled": true,
+                "priority": 75,
+                "parameters": { }
+            },
+            "referrer_analysis_detector": {
+                "enabled": true,
+                "priority": 70,
+                "parameters": { }
+            },
+            "payload_size_detector": {
+                "enabled": true,
+                "priority": 78,
+                "parameters": { }
+            }
+        },
+        "actions": {
+            "block_action": {
+                "enabled": true,
+                "priority": 100,
+                "parameters": {
+                    "default_duration": "1h",
+                    "max_duration": "24h",
+                    "block_message": "Access denied due to network security policy violation",
+                    "log_blocks": true
+                }
+            },
+            "warning_action": {
+                "enabled": true,
+                "priority": 50,
+                "parameters": {
+                    "log_warnings": true,
+                    "include_details": true,
+                    "rate_limit_warnings": true,
+                    "max_warnings_per_hour": 1000
+                }
+            },
+            "security_alert_action": {
+                "enabled": true,
+                "priority": 95,
+                "parameters": {
+                    "alert_channels": [ "email", "slack", "webhook" ],
+                    "severity_threshold": 7,
+                    "immediate_notification": true
+                }
+            },
+            "captcha_action": {
+                "enabled": true,
+                "priority": 75,
+                "parameters": {
+                    "provider": "simple",
+                    "duration": "20m",
+                    "max_attempts": 3,
+                    "difficulty": "medium"
+                }
+            },
+            "rate_limit_action": {
+                "enabled": true,
+                "priority": 70,
+                "parameters": {
+                    "requests_per_minute": 30,
+                    "burst_allowed": 10,
+                    "duration": "20m"
+                }
+            },
+            "geo_block_action": {
+                "enabled": true,
+                "priority": 85,
+                "parameters": {
+                    "block_duration": "2h",
+                    "whitelist_exceptions": true,
+                    "notify_admin": true
+                }
+            },
+            "session_verify_action": {
+                "enabled": true,
+                "priority": 80,
+                "parameters": {
+                    "require_reauth": true,
+                    "verification_methods": [ "password", "mfa" ],
+                    "timeout": "10m"
+                }
+            },
+            "account_suspend_action": {
+                "enabled": true,
+                "priority": 95,
+                "parameters": {
+                    "permanent": false,
+                    "require_admin_approval": true,
+                    "notification_email": "security@example.com",
+                    "log_suspension": true
+                }
+            },
+            "ddos_mitigation_action": {
+                "enabled": true,
+                "priority": 95,
+                "parameters": {
+                    "enable_rate_limiting": true,
+                    "enable_traffic_shaping": true,
+                    "enable_geo_blocking": true,
+                    "mitigation_duration": "1h"
+                }
+            },
+            "frequency_analysis_action": {
+                "enabled": true,
+                "priority": 60,
+                "parameters": {
+                    "deep_analysis": true,
+                    "pattern_learning": true,
+                    "behavioral_profiling": true
+                }
+            },
+            "adaptive_rate_limit_action": {
+                "enabled": true,
+                "priority": 75,
+                "parameters": {
+                    "dynamic_adjustment": true,
+                    "user_behavior_based": true,
+                    "endpoint_specific": true
+                }
+            },
+            "anonymization_block_action": {
+                "enabled": true,
+                "priority": 85,
+                "parameters": {
+                    "block_tor": true,
+                    "block_vpn": false,
+                    "block_proxy": true,
+                    "whitelist_exceptions": true
+                }
+            },
+            "network_analysis_action": {
+                "enabled": true,
+                "priority": 65,
+                "parameters": {
+                    "asn_profiling": true,
+                    "ip_reputation_check": true,
+                    "network_topology_analysis": true
+                }
+            },
+            "asn_block_action": {
+                "enabled": true,
+                "priority": 80,
+                "parameters": {
+                    "block_duration": "4h",
+                    "whitelist_exceptions": true,
+                    "notify_network_admin": true
+                }
+            },
+            "referrer_validation_action": {
+                "enabled": true,
+                "priority": 60,
+                "parameters": {
+                    "strict_validation": false,
+                    "whitelist_management": true,
+                    "referrer_learning": true
+                }
+            },
+            "payload_analysis_action": {
+                "enabled": true,
+                "priority": 70,
+                "parameters": {
+                    "deep_inspection": true,
+                    "malware_scanning": true,
+                    "content_analysis": true
+                }
+            }
+        },
+        "handlers": {
+            "security_logger_handler": {
+                "enabled": true,
+                "priority": 100,
+                "parameters": {
+                    "log_file": "traffic_network_analysis_events.log",
+                    "log_level": "INFO",
+                    "event_types": [ "*" ],
+                    "format": "json",
+                    "max_file_size": "100MB",
+                    "max_backups": 10,
+                    "compress": true,
+                    "include_request_details": true
+                }
+            },
+            "metrics_handler": {
+                "enabled": true,
+                "priority": 70,
+                "parameters": {
+                    "export_interval": "30s",
+                    "metrics_endpoint": "/metrics",
+                    "include_labels": true,
+                    "histogram_buckets": [ 0.1, 0.5, 1.0, 2.5, 5.0, 10.0 ]
+                }
+            }
+        },
+        "load_path": "./plugins",
+        "auto_load": true
+    },
+    "security": {
+        "enable_security_headers": true,
+        "allowed_origins": [ "*" ],
+        "allowed_methods": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+        "allowed_headers": [ "*" ],
+        "max_request_size": 10485760,
+        "enable_rate_limiting": true
+    },
+    "logging": {
+        "level": "INFO",
+        "format": "json",
+        "output": "stdout",
+        "max_size": 100,
+        "max_backups": 5,
+        "max_age": 28,
+        "compress": true,
+        "fields": {
+            "service": "traffic-network-analysis-guard",
+            "version": "2.0.0",
+            "environment": "demo"
+        }
+    }
+}

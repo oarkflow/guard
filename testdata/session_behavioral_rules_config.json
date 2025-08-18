@@ -1,0 +1,603 @@
+{
+    "server": {
+        "address": "0.0.0.0",
+        "port": 8086,
+        "read_timeout": 10000000000,
+        "write_timeout": 10000000000,
+        "idle_timeout": 60000000000,
+        "max_connections": 10000,
+        "enable_prefork": false,
+        "body_limit": 10485760,
+        "trusted_proxies": [ "127.0.0.1", "::1" ]
+    },
+    "engine": {
+        "max_concurrent_requests": 1000,
+        "request_timeout": 30000000000,
+        "enable_metrics": true,
+        "enable_events": true,
+        "default_action": "allow",
+        "failure_mode": "allow",
+        "advanced_rules": [
+            {
+                "name": "SessionHighFrequencyRule",
+                "description": "Detect abnormally high frequency of session activities",
+                "type": "session_analysis",
+                "detectors": [
+                    {
+                        "name": "session_frequency_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "normal_requests_per_minute": 30,
+                            "high_frequency_threshold": 100,
+                            "burst_threshold": 200,
+                            "window_size": "1m",
+                            "track_by_session": true,
+                            "track_by_user": true,
+                            "activity_patterns": [
+                                "rapid_page_navigation",
+                                "api_flooding",
+                                "resource_enumeration"
+                            ]
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 3,
+                                    "min_confidence": 0.6
+                                }
+                            },
+                            {
+                                "name": "rate_limit_action",
+                                "condition": {
+                                    "min_severity": 5,
+                                    "min_confidence": 0.7
+                                }
+                            },
+                            {
+                                "name": "session_terminate_action",
+                                "condition": {
+                                    "min_severity": 7,
+                                    "min_confidence": 0.8
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 85,
+                "enabled": true
+            },
+            {
+                "name": "SessionGeoInconsistencyRule",
+                "description": "Detect sessions with geographically inconsistent access patterns",
+                "type": "geolocation_analysis",
+                "detectors": [
+                    {
+                        "name": "geo_inconsistency_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "max_distance_km": 1000,
+                            "time_threshold": "30m",
+                            "impossible_travel_detection": true,
+                            "vpn_tor_detection": true,
+                            "country_hopping_threshold": 3,
+                            "suspicious_countries": [ "CN", "RU", "KP", "IR" ],
+                            "track_session_geo_history": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 4,
+                                    "min_confidence": 0.7
+                                }
+                            },
+                            {
+                                "name": "captcha_action",
+                                "condition": {
+                                    "min_severity": 6,
+                                    "min_confidence": 0.8
+                                }
+                            },
+                            {
+                                "name": "session_terminate_action",
+                                "condition": {
+                                    "min_severity": 8,
+                                    "min_confidence": 0.9
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 90,
+                "enabled": true
+            },
+            {
+                "name": "SessionDurationOutlierRule",
+                "description": "Detect sessions with abnormal duration patterns",
+                "type": "session_analysis",
+                "detectors": [
+                    {
+                        "name": "session_duration_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "normal_session_duration": "30m",
+                            "max_session_duration": "8h",
+                            "min_session_duration": "30s",
+                            "outlier_threshold": 3.0,
+                            "track_user_patterns": true,
+                            "idle_detection": true,
+                            "activity_correlation": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 2,
+                                    "min_confidence": 0.5
+                                }
+                            },
+                            {
+                                "name": "session_review_action",
+                                "condition": {
+                                    "min_severity": 5,
+                                    "min_confidence": 0.7
+                                }
+                            },
+                            {
+                                "name": "session_terminate_action",
+                                "condition": {
+                                    "min_severity": 8,
+                                    "min_confidence": 0.8
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 70,
+                "enabled": true
+            },
+            {
+                "name": "ConcurrentSessionsRule",
+                "description": "Detect abnormal concurrent session patterns",
+                "type": "session_analysis",
+                "detectors": [
+                    {
+                        "name": "concurrent_sessions_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "max_concurrent_sessions": 3,
+                            "suspicious_concurrent_threshold": 5,
+                            "different_ip_threshold": 2,
+                            "different_device_threshold": 3,
+                            "track_by_user": true,
+                            "session_fingerprinting": true,
+                            "device_correlation": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 3,
+                                    "min_confidence": 0.6
+                                }
+                            },
+                            {
+                                "name": "captcha_action",
+                                "condition": {
+                                    "min_severity": 5,
+                                    "min_confidence": 0.7
+                                }
+                            },
+                            {
+                                "name": "session_limit_action",
+                                "condition": {
+                                    "min_severity": 7,
+                                    "min_confidence": 0.8
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 80,
+                "enabled": true
+            },
+            {
+                "name": "DeviceFingerprintChangeRule",
+                "description": "Detect sudden changes in device fingerprints",
+                "type": "device_analysis",
+                "detectors": [
+                    {
+                        "name": "device_fingerprint_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "fingerprint_elements": [
+                                "user_agent",
+                                "screen_resolution",
+                                "timezone",
+                                "language",
+                                "plugins",
+                                "fonts"
+                            ],
+                            "change_threshold": 0.3,
+                            "rapid_change_detection": true,
+                            "spoofing_detection": true,
+                            "track_fingerprint_history": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 3,
+                                    "min_confidence": 0.6
+                                }
+                            },
+                            {
+                                "name": "captcha_action",
+                                "condition": {
+                                    "min_severity": 5,
+                                    "min_confidence": 0.7
+                                }
+                            },
+                            {
+                                "name": "session_verify_action",
+                                "condition": {
+                                    "min_severity": 7,
+                                    "min_confidence": 0.8
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 75,
+                "enabled": true
+            },
+            {
+                "name": "UserBehaviorBaselineDeviationRule",
+                "description": "Detect deviations from established user behavior baselines",
+                "type": "behavioral_analysis",
+                "detectors": [
+                    {
+                        "name": "behavior_baseline_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "baseline_learning_period": "7d",
+                            "deviation_threshold": 2.5,
+                            "behavior_metrics": [
+                                "login_times",
+                                "page_navigation_patterns",
+                                "api_usage_patterns",
+                                "resource_access_frequency",
+                                "session_duration",
+                                "geographic_patterns"
+                            ],
+                            "anomaly_detection_algorithm": "isolation_forest",
+                            "minimum_baseline_samples": 50
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 2,
+                                    "min_confidence": 0.5
+                                }
+                            },
+                            {
+                                "name": "behavior_analysis_action",
+                                "condition": {
+                                    "min_severity": 4,
+                                    "min_confidence": 0.6
+                                }
+                            },
+                            {
+                                "name": "captcha_action",
+                                "condition": {
+                                    "min_severity": 6,
+                                    "min_confidence": 0.7
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 85,
+                "enabled": true
+            },
+            {
+                "name": "BehavioralPatternDeviationRule",
+                "description": "Detect deviations from normal behavioral patterns",
+                "type": "behavioral_analysis",
+                "detectors": [
+                    {
+                        "name": "pattern_deviation_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "pattern_types": [
+                                "click_patterns",
+                                "typing_patterns",
+                                "mouse_movement",
+                                "scroll_behavior",
+                                "navigation_flow",
+                                "time_between_actions"
+                            ],
+                            "deviation_sensitivity": "medium",
+                            "bot_detection": true,
+                            "automation_detection": true,
+                            "human_behavior_validation": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 3,
+                                    "min_confidence": 0.6
+                                }
+                            },
+                            {
+                                "name": "captcha_action",
+                                "condition": {
+                                    "min_severity": 5,
+                                    "min_confidence": 0.7
+                                }
+                            },
+                            {
+                                "name": "bot_challenge_action",
+                                "condition": {
+                                    "min_severity": 7,
+                                    "min_confidence": 0.8
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 80,
+                "enabled": true
+            },
+            {
+                "name": "IdleSessionResumptionRule",
+                "description": "Detect suspicious resumption of idle sessions",
+                "type": "session_analysis",
+                "detectors": [
+                    {
+                        "name": "idle_session_detector",
+                        "enabled": true,
+                        "parameters": {
+                            "idle_threshold": "30m",
+                            "suspicious_resumption_patterns": [
+                                "immediate_sensitive_access",
+                                "different_ip_resumption",
+                                "different_device_resumption",
+                                "unusual_activity_burst"
+                            ],
+                            "track_session_state": true,
+                            "activity_correlation": true
+                        },
+                        "actions": [
+                            {
+                                "name": "warning_action",
+                                "condition": {
+                                    "min_severity": 3,
+                                    "min_confidence": 0.6
+                                }
+                            },
+                            {
+                                "name": "session_verify_action",
+                                "condition": {
+                                    "min_severity": 5,
+                                    "min_confidence": 0.7
+                                }
+                            },
+                            {
+                                "name": "session_terminate_action",
+                                "condition": {
+                                    "min_severity": 7,
+                                    "min_confidence": 0.8
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "priority": 75,
+                "enabled": true
+            }
+        ]
+    },
+    "store": {
+        "type": "memory",
+        "address": "",
+        "password": "",
+        "database": 0,
+        "prefix": "session_guard:",
+        "max_retries": 3,
+        "timeout": 5000000000,
+        "options": {
+            "cleanup_interval": "1m",
+            "max_memory_usage": "150MB"
+        }
+    },
+    "events": {
+        "buffer_size": 1500,
+        "worker_count": 6,
+        "enable_async": true,
+        "retry_attempts": 3
+    },
+    "plugins": {
+        "detectors": {
+            "session_frequency_detector": {
+                "enabled": true,
+                "priority": 85,
+                "parameters": { }
+            },
+            "geo_inconsistency_detector": {
+                "enabled": true,
+                "priority": 90,
+                "parameters": { }
+            },
+            "session_duration_detector": {
+                "enabled": true,
+                "priority": 70,
+                "parameters": { }
+            },
+            "concurrent_sessions_detector": {
+                "enabled": true,
+                "priority": 80,
+                "parameters": { }
+            },
+            "device_fingerprint_detector": {
+                "enabled": true,
+                "priority": 75,
+                "parameters": { }
+            },
+            "behavior_baseline_detector": {
+                "enabled": true,
+                "priority": 85,
+                "parameters": { }
+            },
+            "pattern_deviation_detector": {
+                "enabled": true,
+                "priority": 80,
+                "parameters": { }
+            },
+            "idle_session_detector": {
+                "enabled": true,
+                "priority": 75,
+                "parameters": { }
+            }
+        },
+        "actions": {
+            "warning_action": {
+                "enabled": true,
+                "priority": 50,
+                "parameters": {
+                    "log_warnings": true,
+                    "include_details": true,
+                    "rate_limit_warnings": true,
+                    "max_warnings_per_hour": 200
+                }
+            },
+            "captcha_action": {
+                "enabled": true,
+                "priority": 75,
+                "parameters": {
+                    "provider": "simple",
+                    "duration": "15m",
+                    "max_attempts": 3,
+                    "difficulty": "medium"
+                }
+            },
+            "session_terminate_action": {
+                "enabled": true,
+                "priority": 90,
+                "parameters": {
+                    "force_logout": true,
+                    "invalidate_tokens": true,
+                    "log_termination": true,
+                    "notification_required": true
+                }
+            },
+            "session_verify_action": {
+                "enabled": true,
+                "priority": 80,
+                "parameters": {
+                    "require_reauth": true,
+                    "verification_methods": [ "password", "mfa", "security_questions" ],
+                    "timeout": "5m"
+                }
+            },
+            "session_limit_action": {
+                "enabled": true,
+                "priority": 85,
+                "parameters": {
+                    "max_sessions": 3,
+                    "terminate_oldest": true,
+                    "notify_user": true
+                }
+            },
+            "rate_limit_action": {
+                "enabled": true,
+                "priority": 70,
+                "parameters": {
+                    "requests_per_minute": 20,
+                    "burst_allowed": 5,
+                    "duration": "15m"
+                }
+            },
+            "behavior_analysis_action": {
+                "enabled": true,
+                "priority": 60,
+                "parameters": {
+                    "deep_analysis": true,
+                    "pattern_learning": true,
+                    "risk_scoring": true
+                }
+            },
+            "bot_challenge_action": {
+                "enabled": true,
+                "priority": 85,
+                "parameters": {
+                    "challenge_type": "behavioral",
+                    "difficulty": "hard",
+                    "timeout": "30s"
+                }
+            },
+            "session_review_action": {
+                "enabled": true,
+                "priority": 65,
+                "parameters": {
+                    "manual_review": false,
+                    "automated_analysis": true,
+                    "risk_assessment": true
+                }
+            }
+        },
+        "handlers": {
+            "security_logger_handler": {
+                "enabled": true,
+                "priority": 100,
+                "parameters": {
+                    "log_file": "session_behavioral_events.log",
+                    "log_level": "INFO",
+                    "event_types": [ "*" ],
+                    "format": "json",
+                    "max_file_size": "100MB",
+                    "max_backups": 5,
+                    "compress": true,
+                    "include_request_details": true
+                }
+            },
+            "metrics_handler": {
+                "enabled": true,
+                "priority": 70,
+                "parameters": {
+                    "export_interval": "30s",
+                    "metrics_endpoint": "/metrics",
+                    "include_labels": true,
+                    "histogram_buckets": [ 0.1, 0.5, 1.0, 2.5, 5.0, 10.0 ]
+                }
+            }
+        },
+        "load_path": "./plugins",
+        "auto_load": true
+    },
+    "security": {
+        "enable_security_headers": true,
+        "allowed_origins": [ "*" ],
+        "allowed_methods": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+        "allowed_headers": [ "*" ],
+        "max_request_size": 10485760,
+        "enable_rate_limiting": true
+    },
+    "logging": {
+        "level": "INFO",
+        "format": "json",
+        "output": "stdout",
+        "max_size": 100,
+        "max_backups": 3,
+        "max_age": 28,
+        "compress": true,
+        "fields": {
+            "service": "session-behavioral-guard",
+            "version": "2.0.0",
+            "environment": "demo"
+        }
+    }
+}
