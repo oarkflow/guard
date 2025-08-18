@@ -11,13 +11,13 @@ import (
 	"github.com/oarkflow/log"
 
 	"github.com/oarkflow/guard/pkg/events"
-	plugins2 "github.com/oarkflow/guard/pkg/plugins"
+	"github.com/oarkflow/guard/pkg/plugins"
 	"github.com/oarkflow/guard/pkg/store"
 )
 
 // RuleEngine orchestrates detection, action execution, and event publishing
 type RuleEngine struct {
-	registry     *plugins2.PluginRegistry
+	registry     *plugins.PluginRegistry
 	eventBus     *events.EventBus
 	eventFactory *events.EventFactory
 	store        store.StateStore
@@ -44,16 +44,16 @@ type Metrics struct {
 
 // ProcessingResult holds the result of request processing
 type ProcessingResult struct {
-	Allowed     bool                       `json:"allowed"`
-	Detections  []plugins2.DetectionResult `json:"detections"`
-	Actions     []string                   `json:"actions"`
-	Events      []plugins2.SecurityEvent   `json:"events"`
-	ProcessTime time.Duration              `json:"process_time"`
-	Error       error                      `json:"error,omitempty"`
+	Allowed     bool                      `json:"allowed"`
+	Detections  []plugins.DetectionResult `json:"detections"`
+	Actions     []string                  `json:"actions"`
+	Events      []plugins.SecurityEvent   `json:"events"`
+	ProcessTime time.Duration             `json:"process_time"`
+	Error       error                     `json:"error,omitempty"`
 }
 
 // NewRuleEngine creates a new rule engine
-func NewRuleEngine(registry *plugins2.PluginRegistry, eventBus *events.EventBus, stateStore store.StateStore) *RuleEngine {
+func NewRuleEngine(registry *plugins.PluginRegistry, eventBus *events.EventBus, stateStore store.StateStore) *RuleEngine {
 	return &RuleEngine{
 		registry:     registry,
 		eventBus:     eventBus,
@@ -144,7 +144,7 @@ func getDefaultActionRules() []config.ActionRule {
 }
 
 // ProcessRequest processes a request through all detection and action plugins
-func (re *RuleEngine) ProcessRequest(ctx context.Context, reqCtx *plugins2.RequestContext) ProcessingResult {
+func (re *RuleEngine) ProcessRequest(ctx context.Context, reqCtx *plugins.RequestContext) ProcessingResult {
 	startTime := time.Now()
 
 	re.mu.Lock()
@@ -153,9 +153,9 @@ func (re *RuleEngine) ProcessRequest(ctx context.Context, reqCtx *plugins2.Reque
 
 	result := ProcessingResult{
 		Allowed:     true,
-		Detections:  make([]plugins2.DetectionResult, 0),
+		Detections:  make([]plugins.DetectionResult, 0),
 		Actions:     make([]string, 0),
-		Events:      make([]plugins2.SecurityEvent, 0),
+		Events:      make([]plugins.SecurityEvent, 0),
 		ProcessTime: 0,
 	}
 
@@ -169,7 +169,7 @@ func (re *RuleEngine) ProcessRequest(ctx context.Context, reqCtx *plugins2.Reque
 		result.Actions = append(result.Actions, "block_action")
 
 		// Create a detection result for the existing block
-		result.Detections = append(result.Detections, plugins2.DetectionResult{
+		result.Detections = append(result.Detections, plugins.DetectionResult{
 			Threat:     true,
 			Confidence: 1.0,
 			Details:    fmt.Sprintf("IP %s is currently blocked: %v", reqCtx.IP, blockInfo),
@@ -228,17 +228,17 @@ func (re *RuleEngine) ProcessRequest(ctx context.Context, reqCtx *plugins2.Reque
 }
 
 // runDetections runs all enabled detector plugins
-func (re *RuleEngine) runDetections(ctx context.Context, reqCtx *plugins2.RequestContext) []plugins2.DetectionResult {
+func (re *RuleEngine) runDetections(ctx context.Context, reqCtx *plugins.RequestContext) []plugins.DetectionResult {
 	detectors := re.registry.GetAllDetectors()
-	results := make([]plugins2.DetectionResult, 0, len(detectors))
+	results := make([]plugins.DetectionResult, 0, len(detectors))
 
 	// Run detections concurrently
-	resultChan := make(chan plugins2.DetectionResult, len(detectors))
+	resultChan := make(chan plugins.DetectionResult, len(detectors))
 	var wg sync.WaitGroup
 
 	for _, detector := range detectors {
 		wg.Add(1)
-		go func(d plugins2.DetectorPlugin) {
+		go func(d plugins.DetectorPlugin) {
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
@@ -271,11 +271,11 @@ func (re *RuleEngine) runDetections(ctx context.Context, reqCtx *plugins2.Reques
 }
 
 // evaluateDetections determines which actions to take based on configurable rules
-func (re *RuleEngine) evaluateDetections(detections []plugins2.DetectionResult, reqCtx *plugins2.RequestContext) []string {
+func (re *RuleEngine) evaluateDetections(detections []plugins.DetectionResult, reqCtx *plugins.RequestContext) []string {
 	actions := make([]string, 0)
 
 	// Filter only threat detections
-	threatDetections := make([]plugins2.DetectionResult, 0)
+	threatDetections := make([]plugins.DetectionResult, 0)
 	for _, detection := range detections {
 		if detection.Threat {
 			threatDetections = append(threatDetections, detection)
@@ -326,7 +326,7 @@ func (re *RuleEngine) evaluateDetections(detections []plugins2.DetectionResult, 
 }
 
 // ruleMatches checks if a rule matches any of the threat detections
-func (re *RuleEngine) ruleMatches(rule config.ActionRule, detections []plugins2.DetectionResult) bool {
+func (re *RuleEngine) ruleMatches(rule config.ActionRule, detections []plugins.DetectionResult) bool {
 	for _, detection := range detections {
 		if re.detectionMatchesRule(rule, detection) {
 			return true
@@ -336,7 +336,7 @@ func (re *RuleEngine) ruleMatches(rule config.ActionRule, detections []plugins2.
 }
 
 // detectionMatchesRule checks if a single detection matches a rule
-func (re *RuleEngine) detectionMatchesRule(rule config.ActionRule, detection plugins2.DetectionResult) bool {
+func (re *RuleEngine) detectionMatchesRule(rule config.ActionRule, detection plugins.DetectionResult) bool {
 	// Check severity range
 	if detection.Severity < rule.MinSeverity {
 		return false
@@ -404,17 +404,17 @@ func (re *RuleEngine) detectionMatchesRule(rule config.ActionRule, detection plu
 }
 
 // executeAction executes a specific action plugin
-func (re *RuleEngine) executeAction(ctx context.Context, actionName string, reqCtx *plugins2.RequestContext, detections []plugins2.DetectionResult) error {
+func (re *RuleEngine) executeAction(ctx context.Context, actionName string, reqCtx *plugins.RequestContext, detections []plugins.DetectionResult) error {
 	action, exists := re.registry.GetAction(actionName)
 	if !exists {
 		return fmt.Errorf("action plugin %s not found", actionName)
 	}
 
 	// Create a rule result from the highest severity detection
-	var ruleResult plugins2.RuleResult
+	var ruleResult plugins.RuleResult
 	for _, detection := range detections {
 		if detection.Threat && detection.Severity > ruleResult.Severity {
-			ruleResult = plugins2.RuleResult{
+			ruleResult = plugins.RuleResult{
 				Triggered:  true,
 				Action:     actionName,
 				Confidence: detection.Confidence,
@@ -430,7 +430,7 @@ func (re *RuleEngine) executeAction(ctx context.Context, actionName string, reqC
 }
 
 // shouldAllowRequest determines if a request should be allowed based on detections and actions
-func (re *RuleEngine) shouldAllowRequest(detections []plugins2.DetectionResult, actions []string) bool {
+func (re *RuleEngine) shouldAllowRequest(detections []plugins.DetectionResult, actions []string) bool {
 	// Check if any blocking actions were executed
 	for _, action := range actions {
 		if action == "block_action" {
@@ -449,8 +449,8 @@ func (re *RuleEngine) shouldAllowRequest(detections []plugins2.DetectionResult, 
 }
 
 // generateEvents creates security events based on processing results
-func (re *RuleEngine) generateEvents(reqCtx *plugins2.RequestContext, detections []plugins2.DetectionResult, actions []string, allowed bool) []plugins2.SecurityEvent {
-	eve := make([]plugins2.SecurityEvent, 0)
+func (re *RuleEngine) generateEvents(reqCtx *plugins.RequestContext, detections []plugins.DetectionResult, actions []string, allowed bool) []plugins.SecurityEvent {
+	eve := make([]plugins.SecurityEvent, 0)
 
 	// Create threat detection events
 	for _, detection := range detections {

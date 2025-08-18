@@ -1,6 +1,3 @@
-//go:build ignore
-// +build ignore
-
 package main
 
 import (
@@ -80,7 +77,7 @@ func main() {
 	app.Use(logger.New())
 
 	// Serve static files
-	app.Static("/", "./demo")
+	app.Static("/", "./views")
 
 	// Authentication endpoints
 	setupAuthRoutes(app)
