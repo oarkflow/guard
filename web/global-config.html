@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Configuration - Guard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        .form-input,
+        .form-select,
+        .form-textarea {
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .config-section {
+            transition: all 0.3s ease;
+        }
+
+        .config-section:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .nested-config {
+            border-left: 3px solid #3b82f6;
+            padding-left: 1rem;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <div class="min-h-screen" x-data="globalConfig()">
+        <!-- Header -->
+        <div class="bg-white shadow-sm border-b px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">Global Configuration</h1>
+                    <p class="text-gray-600 mt-1">Configure global system settings and engine parameters</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button @click="validateConfig()" :disabled="loading"
+                        class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 disabled:opacity-50 transition-colors">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Validate
+                    </button>
+                    <button @click="saveConfig()" :disabled="loading"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div x-show="loading" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="flex items-center">
+                    <i class="fas fa-spinner fa-spin text-blue-600 text-xl mr-3"></i>
+                    <span class="text-gray-800">Processing...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Toast -->
+        <div x-show="notification.show" x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform translate-y-2"
+            x-transition:enter-end="opacity-100 transform translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 transform translate-y-0"
+            x-transition:leave-end="opacity-0 transform translate-y-2" class="fixed top-4 right-4 z-50 max-w-sm">
+            <div class="bg-white border-l-4 p-4 rounded-lg shadow-lg"
+                :class="notification.type === 'success' ? 'border-green-500' : notification.type === 'error' ? 'border-red-500' : 'border-yellow-500'">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="text-xl"
+                            :class="notification.type === 'success' ? 'fas fa-check-circle text-green-500' : notification.type === 'error' ? 'fas fa-exclamation-circle text-red-500' : 'fas fa-exclamation-triangle text-yellow-500'"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-800" x-text="notification.title"></p>
+                        <p class="text-sm text-gray-600 mt-1" x-text="notification.message"></p>
+                    </div>
+                    <div class="ml-auto pl-3">
+                        <button @click="notification.show = false" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="p-6">
+            <form @submit.prevent="saveConfig()">
+                <!-- Engine Configuration -->
+                <div class="bg-white p-6 rounded-lg shadow config-section mb-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Engine Configuration</h2>
+                    <div class="nested-config space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Max Concurrent
+                                    Requests</label>
+                                <input type="number" x-model="config.engine.max_concurrent_requests" min="1"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Maximum number of concurrent requests to process
+                                </p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Request Timeout</label>
+                                <input type="text" x-model="config.engine.request_timeout"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Maximum time to process a request (e.g., "30s")
+                                </p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Default Action</label>
+                                <select x-model="config.engine.default_action"
+                                    class="form-select w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="allow">Allow</option>
+                                    <option value="deny">Deny</option>
+                                </select>
+                                <p class="mt-1 text-sm text-gray-500">Default action when no rules match</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Failure Mode</label>
+                                <select x-model="config.engine.failure_mode"
+                                    class="form-select w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="allow">Allow</option>
+                                    <option value="deny">Deny</option>
+                                </select>
+                                <p class="mt-1 text-sm text-gray-500">Action to take when engine fails</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Enable Metrics</label>
+                                <div class="mt-1">
+                                    <label class="inline-flex items-center">
+                                        <input type="checkbox" x-model="config.engine.enable_metrics"
+                                            class="form-checkbox h-5 w-5 text-blue-600">
+                                        <span class="ml-2 text-gray-700">Enable metrics collection</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Enable Events</label>
+                                <div class="mt-1">
+                                    <label class="inline-flex items-center">
+                                        <input type="checkbox" x-model="config.engine.enable_events"
+                                            class="form-checkbox h-5 w-5 text-blue-600">
+                                        <span class="ml-2 text-gray-700">Enable event processing</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Store Configuration -->
+                <div class="bg-white p-6 rounded-lg shadow config-section mb-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Store Configuration</h2>
+                    <div class="nested-config space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Store Type</label>
+                                <select x-model="config.store.type"
+                                    class="form-select w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="memory">Memory</option>
+                                    <option value="redis">Redis</option>
+                                </select>
+                                <p class="mt-1 text-sm text-gray-500">Type of storage backend to use</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Database</label>
+                                <input type="number" x-model="config.store.database" min="0"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Database index for Redis</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                <input type="text" x-model="config.store.address"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Address of the storage backend (for Redis)</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                <input type="password" x-model="config.store.password"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Password for the storage backend (for Redis)</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Prefix</label>
+                                <input type="text" x-model="config.store.prefix"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Key prefix for storage</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Timeout</label>
+                                <input type="text" x-model="config.store.timeout"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Connection timeout (e.g., "5s")</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Max Retries</label>
+                                <input type="number" x-model="config.store.max_retries" min="0"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Maximum number of retry attempts</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Events Configuration -->
+                <div class="bg-white p-6 rounded-lg shadow config-section mb-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Events Configuration</h2>
+                    <div class="nested-config space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Buffer Size</label>
+                                <input type="number" x-model="config.events.buffer_size" min="1"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Size of the event buffer</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Worker Count</label>
+                                <input type="number" x-model="config.events.worker_count" min="1"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Number of worker goroutines</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Enable Async</label>
+                                <div class="mt-1">
+                                    <label class="inline-flex items-center">
+                                        <input type="checkbox" x-model="config.events.enable_async"
+                                            class="form-checkbox h-5 w-5 text-blue-600">
+                                        <span class="ml-2 text-gray-700">Enable asynchronous event processing</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Retry Attempts</label>
+                                <input type="number" x-model="config.events.retry_attempts" min="0"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Number of retry attempts for failed events</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Logging Configuration -->
+                <div class="bg-white p-6 rounded-lg shadow config-section mb-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Logging Configuration</h2>
+                    <div class="nested-config space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Log Level</label>
+                                <select x-model="config.logging.level"
+                                    class="form-select w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="DEBUG">DEBUG</option>
+                                    <option value="INFO">INFO</option>
+                                    <option value="WARN">WARN</option>
+                                    <option value="ERROR">ERROR</option>
+                                </select>
+                                <p class="mt-1 text-sm text-gray-500">Minimum log level to output</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Log Format</label>
+                                <select x-model="config.logging.format"
+                                    class="form-select w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="json">JSON</option>
+                                    <option value="text">Text</option>
+                                </select>
+                                <p class="mt-1 text-sm text-gray-500">Format of log output</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Output</label>
+                                <input type="text" x-model="config.logging.output"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Log output destination (stdout, file path, etc.)
+                                </p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Max Size (MB)</label>
+                                <input type="number" x-model="config.logging.max_size" min="1"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Maximum size of log file before rotation</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Max Backups</label>
+                                <input type="number" x-model="config.logging.max_backups" min="0"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Maximum number of old log files to keep</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Max Age (Days)</label>
+                                <input type="number" x-model="config.logging.max_age" min="0"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Maximum age of old log files to keep</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Compress</label>
+                                <div class="mt-1">
+                                    <label class="inline-flex items-center">
+                                        <input type="checkbox" x-model="config.logging.compress"
+                                            class="form-checkbox h-5 w-5 text-blue-600">
+                                        <span class="ml-2 text-gray-700">Compress rotated log files</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button @click="resetConfig()" type="button"
+                        class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                        <i class="fas fa-undo mr-2"></i>
+                        Reset
+                    </button>
+                    <button @click="validateConfig()" type="button" :disabled="loading"
+                        class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 disabled:opacity-50 transition-colors">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Validate
+                    </button>
+                    <button type="submit" :disabled="loading"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <script>
+            function globalConfig() {
+                return {
+                    config: {
+                        engine: {
+                            max_concurrent_requests: 1000,
+                            request_timeout: "30s",
+                            enable_metrics: true,
+                            enable_events: true,
+                            default_action: "allow",
+                            failure_mode: "allow",
+                            action_rules: []
+                        },
+                        store: {
+                            type: "memory",
+                            address: "",
+                            password: "",
+                            database: 0,
+                            prefix: "",
+                            max_retries: 3,
+                            timeout: "5s",
+                            options: null
+                        },
+                        events: {
+                            buffer_size: 1000,
+                            worker_count: 4,
+                            enable_async: true,
+                            retry_attempts: 3
+                        },
+                        logging: {
+                            level: "INFO",
+                            format: "json",
+                            output: "stdout",
+                            max_size: 100,
+                            max_backups: 3,
+                            max_age: 28,
+                            compress: true
+                        }
+                    },
+                    originalConfig: {},
+                    loading: false,
+                    notification: {
+                        show: false,
+                        type: 'success',
+                        title: '',
+                        message: ''
+                    },
+
+                    async init() {
+                        await this.loadConfig();
+                        // Save original config for reset functionality
+                        this.originalConfig = JSON.parse(JSON.stringify(this.config));
+                    },
+
+                    async loadConfig() {
+                        this.loading = true;
+                        try {
+                            const response = await fetch('/api/config/global');
+                            const data = await response.json();
+
+                            if (data.success) {
+                                this.config = { ...this.config, ...data.data };
+                                this.showNotification('success', 'Loaded', 'Global configuration loaded successfully');
+                            } else {
+                                this.showNotification('error', 'Error', data.error || 'Failed to load global configuration');
+                            }
+                        } catch (error) {
+                            console.error('Failed to load config:', error);
+                            this.showNotification('error', 'Error', 'Failed to load global configuration');
+                        } finally {
+                            this.loading = false;
+                        }
+                    },
+
+                    async saveConfig() {
+                        this.loading = true;
+                        try {
+                            const response = await fetch('/api/config/global', {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(this.config)
+                            });
+
+                            const data = await response.json();
+
+                            if (data.success) {
+                                this.showNotification('success', 'Success', 'Global configuration saved successfully');
+                                // Update original config after successful save
+                                this.originalConfig = JSON.parse(JSON.stringify(this.config));
+                            } else {
+                                this.showNotification('error', 'Error', data.error || 'Failed to save global configuration');
+                            }
+                        } catch (error) {
+                            console.error('Failed to save config:', error);
+                            this.showNotification('error', 'Error', 'Failed to save global configuration');
+                        } finally {
+                            this.loading = false;
+                        }
+                    },
+
+                    async validateConfig() {
+                        this.loading = true;
+                        try {
+                            const response = await fetch('/api/config/global/validate', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(this.config)
+                            });
+
+                            const data = await response.json();
+
+                            if (data.success) {
+                                this.showNotification('success', 'Valid', 'Global configuration is valid');
+                            } else {
+                                this.showNotification('error', 'Invalid', data.error || 'Global configuration validation failed');
+                            }
+                        } catch (error) {
+                            console.error('Failed to validate config:', error);
+                            this.showNotification('error', 'Error', 'Failed to validate global configuration');
+                        } finally {
+                            this.loading = false;
+                        }
+                    },
+
+                    resetConfig() {
+                        this.config = JSON.parse(JSON.stringify(this.originalConfig));
+                        this.showNotification('info', 'Reset', 'Configuration reset to last saved state');
+                    },
+
+                    showNotification(type, title, message) {
+                        this.notification = {
+                            show: true,
+                            type,
+                            title,
+                            message
+                        };
+
+                        setTimeout(() => {
+                            this.notification.show = false;
+                        }, 5000);
+                    }
+                }
+            }
+        </script>
+    </div>
+</body>
+
+</html>

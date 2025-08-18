@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup Demo - Guard System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+            font-weight: 600;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .user-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            text-align: left;
+        }
+
+        .user-info h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .user-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔐 Signup Demo</h1>
+        <p class="subtitle">Guard System Protection</p>
+
+        <form id="signupForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <button type="submit">Sign Up</button>
+        </form>
+
+        <div id="response" class="response"></div>
+
+        <div class="user-info">
+            <h3>Your Information</h3>
+            <p><strong>IP Address:</strong> <span id="userIp">Loading...</span></p>
+            <p><strong>User Agent:</strong> <span id="userAgent">Loading...</span></p>
+            <p><strong>Time:</strong> <span id="timestamp">Loading...</span></p>
+        </div>
+    </div>
+
+    <script>
+        // Get user info on page load
+        fetch('/demo/user-info')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('userIp').textContent = data.ip;
+                document.getElementById('userAgent').textContent = data.user_agent;
+                document.getElementById('timestamp').textContent = new Date(data.timestamp).toLocaleString();
+            })
+            .catch(error => {
+                console.error('Error fetching user info:', error);
+            });
+
+        // Handle form submission
+        document.getElementById('signupForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const responseDiv = document.getElementById('response');
+
+            // Show loading state
+            responseDiv.className = 'response info';
+            responseDiv.textContent = 'Processing signup...';
+            responseDiv.style.display = 'block';
+
+            // Submit signup request
+            fetch('/demo/signup', {
+                method: 'POST',
+                body: new URLSearchParams(formData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        responseDiv.className = 'response success';
+                        responseDiv.innerHTML = `
+                        <strong>Success!</strong><br>
+                        ${data.message}<br>
+                        <small>Account created for: ${data.username}</small>
+                    `;
+                    } else {
+                        responseDiv.className = 'response error';
+                        responseDiv.innerHTML = `
+                        <strong>Signup Failed</strong><br>
+                        ${data.message || data.error || 'Unknown error occurred'}
+                    `;
+                    }
+                })
+                .catch(error => {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = `
+                    <strong>Error</strong><br>
+                    Failed to process signup: ${error.message}
+                `;
+                });
+        });
+    </script>
+</body>
+
+</html>

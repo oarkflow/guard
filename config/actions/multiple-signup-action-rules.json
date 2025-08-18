@@ -1,0 +1,34 @@
+{
+    "action": {
+        "name": "multiple_signup_action",
+        "enabled": true,
+        "priority": 80,
+        "parameters": {
+            "log_multiple_signups": true,
+            "notification_threshold": 3,
+            "escalation_rules": [
+                {
+                    "signup_count": 3,
+                    "action": "log",
+                    "description": "Log multiple signup attempts"
+                },
+                {
+                    "signup_count": 5,
+                    "action": "warn",
+                    "description": "Send warning notification"
+                },
+                {
+                    "signup_count": 10,
+                    "action": "block",
+                    "description": "Temporarily block IP",
+                    "duration": "1h"
+                },
+                {
+                    "signup_count": 20,
+                    "action": "permanent_block",
+                    "description": "Permanently block IP"
+                }
+            ]
+        }
+    }
+}

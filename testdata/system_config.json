@@ -52,6 +52,18 @@
                 "parameters": {
                     "custom_patterns": [ ]
                 }
+            },
+            "multiple_signup_detector": {
+                "enabled": true,
+                "priority": 75,
+                "parameters": {
+                    "signup_endpoints": [ "/signup", "/register", "/api/signup", "/api/register" ],
+                    "max_signups": 3,
+                    "window_size": "1h",
+                    "key_template": "multiple_signup:{ip}",
+                    "track_usernames": true,
+                    "username_limit": 5
+                }
             }
         },
         "actions": {
@@ -76,6 +88,14 @@
                     "duration": "10m",
                     "max_attempts": 3,
                     "difficulty": "medium"
+                }
+            },
+            "multiple_signup_action": {
+                "enabled": true,
+                "priority": 80,
+                "parameters": {
+                    "log_multiple_signups": true,
+                    "notification_threshold": 3
                 }
             }
         },

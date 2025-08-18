@@ -337,6 +337,21 @@ func (app *Application) registerBuiltinPlugins() error {
 		return fmt.Errorf("failed to register rate limit detector: %w", err)
 	}
 
+	multipleSignupDetector := detectors.NewMultipleSignupDetector(app.stateStore)
+	if err := app.registry.RegisterDetector(
+		multipleSignupDetector,
+		plugins.PluginMetadata{
+			Name:        multipleSignupDetector.Name(),
+			Version:     multipleSignupDetector.Version(),
+			Description: multipleSignupDetector.Description(),
+			Type:        "detector",
+			Author:      "System",
+		},
+		cfg.Plugins.Detectors["multiple_signup_detector"],
+	); err != nil {
+		return fmt.Errorf("failed to register multiple signup detector: %w", err)
+	}
+
 	// Register action plugins
 	blockAction := actions.NewBlockAction(app.stateStore)
 	if err := app.registry.RegisterAction(
@@ -810,6 +825,12 @@ func (app *Application) setupRoutes() {
 			return c.JSON(fiber.Map{"message": fmt.Sprintf("IP %s removed from blacklist", ip)})
 		})
 	}
+
+	// Serve configuration dashboard
+	app.App.Static("/config", "./web")
+	app.App.Get("/config", func(c *fiber.Ctx) error {
+		return c.SendFile("./web/config-dashboard.html")
+	})
 }
 
 // setupConfigAPI sets up the configuration management API

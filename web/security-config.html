@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Configuration - Guard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        .form-input,
+        .form-select,
+        .form-textarea {
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .config-section {
+            transition: all 0.3s ease;
+        }
+
+        .config-section:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .nested-config {
+            border-left: 3px solid #3b82f6;
+            padding-left: 1rem;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <div class="min-h-screen" x-data="securityConfig()">
+        <!-- Header -->
+        <div class="bg-white shadow-sm border-b px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">Security Configuration</h1>
+                    <p class="text-gray-600 mt-1">Configure security policies and CORS settings</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button @click="validateConfig()" :disabled="loading"
+                        class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 disabled:opacity-50 transition-colors">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Validate
+                    </button>
+                    <button @click="saveConfig()" :disabled="loading"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div x-show="loading" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="flex items-center">
+                    <i class="fas fa-spinner fa-spin text-blue-600 text-xl mr-3"></i>
+                    <span class="text-gray-800">Processing...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Toast -->
+        <div x-show="notification.show" x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform translate-y-2"
+            x-transition:enter-end="opacity-100 transform translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 transform translate-y-0"
+            x-transition:leave-end="opacity-0 transform translate-y-2" class="fixed top-4 right-4 z-50 max-w-sm">
+            <div class="bg-white border-l-4 p-4 rounded-lg shadow-lg"
+                :class="notification.type === 'success' ? 'border-green-500' : notification.type === 'error' ? 'border-red-500' : 'border-yellow-500'">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="text-xl"
+                            :class="notification.type === 'success' ? 'fas fa-check-circle text-green-500' : notification.type === 'error' ? 'fas fa-exclamation-circle text-red-500' : 'fas fa-exclamation-triangle text-yellow-500'"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-800" x-text="notification.title"></p>
+                        <p class="text-sm text-gray-600 mt-1" x-text="notification.message"></p>
+                    </div>
+                    <div class="ml-auto pl-3">
+                        <button @click="notification.show = false" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="p-6">
+            <form @submit.prevent="saveConfig()">
+                <!-- Security Settings -->
+                <div class="bg-white p-6 rounded-lg shadow config-section mb-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Security Settings</h2>
+                    <div class="nested-config space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Enable Security
+                                    Headers</label>
+                                <div class="mt-1">
+                                    <label class="inline-flex items-center">
+                                        <input type="checkbox" x-model="config.security.enable_security_headers"
+                                            class="form-checkbox h-5 w-5 text-blue-600">
+                                        <span class="ml-2 text-gray-700">Enable security headers</span>
+                                    </label>
+                                </div>
+                                <p class="mt-1 text-sm text-gray-500">Enable or disable security headers in HTTP
+                                    responses</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Max Request Size</label>
+                                <input type="number" x-model="config.security.max_request_size" min="1"
+                                    class="form-input w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <p class="mt-1 text-sm text-gray-500">Maximum request size in bytes</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Enable Rate Limiting</label>
+                                <div class="mt-1">
+                                    <label class="inline-flex items-center">
+                                        <input type="checkbox" x-model="config.security.enable_rate_limiting"
+                                            class="form-checkbox h-5 w-5 text-blue-600">
+                                        <span class="ml-2 text-gray-700">Enable rate limiting</span>
+                                    </label>
+                                </div>
+                                <p class="mt-1 text-sm text-gray-500">Enable or disable rate limiting for requests</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CORS Configuration -->
+                <div class="bg-white p-6 rounded-lg shadow config-section mb-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">CORS Configuration</h2>
+                    <div class="nested-config space-y-4">
+                        <!-- Allowed Origins -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Allowed Origins</label>
+                            <div class="mt-1">
+                                <template x-for="(origin, index) in config.security.allowed_origins" :key="index">
+                                    <div class="flex items-center mb-2">
+                                        <input type="text" x-model="config.security.allowed_origins[index]"
+                                            class="form-input flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                            placeholder="Origin (e.g., https://example.com or *)">
+                                        <button @click="removeAllowedOrigin(index)" type="button"
+                                            class="ml-2 bg-red-100 text-red-600 p-2 rounded-md hover:bg-red-200">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                                <button @click="addAllowedOrigin()" type="button"
+                                    class="mt-2 bg-blue-100 text-blue-600 px-3 py-2 rounded-md hover:bg-blue-200">
+                                    <i class="fas fa-plus mr-1"></i> Add Allowed Origin
+                                </button>
+                            </div>
+                            <p class="mt-1 text-sm text-gray-500">List of allowed origins for CORS requests</p>
+                        </div>
+
+                        <!-- Allowed Methods -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Allowed Methods</label>
+                            <div class="mt-1">
+                                <template x-for="(method, index) in config.security.allowed_methods" :key="index">
+                                    <div class="flex items-center mb-2">
+                                        <select x-model="config.security.allowed_methods[index]"
+                                            class="form-select flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="GET">GET</option>
+                                            <option value="POST">POST</option>
+                                            <option value="PUT">PUT</option>
+                                            <option value="DELETE">DELETE</option>
+                                            <option value="PATCH">PATCH</option>
+                                            <option value="OPTIONS">OPTIONS</option>
+                                            <option value="HEAD">HEAD</option>
+                                        </select>
+                                        <button @click="removeAllowedMethod(index)" type="button"
+                                            class="ml-2 bg-red-100 text-red-600 p-2 rounded-md hover:bg-red-200">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                                <button @click="addAllowedMethod()" type="button"
+                                    class="mt-2 bg-blue-100 text-blue-600 px-3 py-2 rounded-md hover:bg-blue-200">
+                                    <i class="fas fa-plus mr-1"></i> Add Allowed Method
+                                </button>
+                            </div>
+                            <p class="mt-1 text-sm text-gray-500">List of allowed HTTP methods for CORS requests</p>
+                        </div>
+
+                        <!-- Allowed Headers -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Allowed Headers</label>
+                            <div class="mt-1">
+                                <template x-for="(header, index) in config.security.allowed_headers" :key="index">
+                                    <div class="flex items-center mb-2">
+                                        <input type="text" x-model="config.security.allowed_headers[index]"
+                                            class="form-input flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                            placeholder="Header name (e.g., Content-Type or *)">
+                                        <button @click="removeAllowedHeader(index)" type="button"
+                                            class="ml-2 bg-red-100 text-red-600 p-2 rounded-md hover:bg-red-200">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                                <button @click="addAllowedHeader()" type="button"
+                                    class="mt-2 bg-blue-100 text-blue-600 px-3 py-2 rounded-md hover:bg-blue-200">
+                                    <i class="fas fa-plus mr-1"></i> Add Allowed Header
+                                </button>
+                            </div>
+                            <p class="mt-1 text-sm text-gray-500">List of allowed headers for CORS requests</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button @click="resetConfig()" type="button"
+                        class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                        <i class="fas fa-undo mr-2"></i>
+                        Reset
+                    </button>
+                    <button @click="validateConfig()" type="button" :disabled="loading"
+                        class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 disabled:opacity-50 transition-colors">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Validate
+                    </button>
+                    <button type="submit" :disabled="loading"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <script>
+            function securityConfig() {
+                return {
+                    config: {
+                        security: {
+                            enable_security_headers: true,
+                            allowed_origins: ["*"],
+                            allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                            allowed_headers: ["*"],
+                            max_request_size: 10485760,
+                            enable_rate_limiting: true
+                        }
+                    },
+                    originalConfig: {},
+                    loading: false,
+                    notification: {
+                        show: false,
+                        type: 'success',
+                        title: '',
+                        message: ''
+                    },
+
+                    async init() {
+                        await this.loadConfig();
+                        // Save original config for reset functionality
+                        this.originalConfig = JSON.parse(JSON.stringify(this.config));
+                    },
+
+                    async loadConfig() {
+                        this.loading = true;
+                        try {
+                            const response = await fetch('/api/config/security');
+                            const data = await response.json();
+
+                            if (data.success) {
+                                this.config = { ...this.config, ...data.data };
+                                this.showNotification('success', 'Loaded', 'Security configuration loaded successfully');
+                            } else {
+                                this.showNotification('error', 'Error', data.error || 'Failed to load security configuration');
+                            }
+                        } catch (error) {
+                            console.error('Failed to load config:', error);
+                            this.showNotification('error', 'Error', 'Failed to load security configuration');
+                        } finally {
+                            this.loading = false;
+                        }
+                    },
+
+                    async saveConfig() {
+                        this.loading = true;
+                        try {
+                            const response = await fetch('/api/config/security', {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(this.config)
+                            });
+
+                            const data = await response.json();
+
+                            if (data.success) {
+                                this.showNotification('success', 'Success', 'Security configuration saved successfully');
+                                // Update original config after successful save
+                                this.originalConfig = JSON.parse(JSON.stringify(this.config));
+                            } else {
+                                this.showNotification('error', 'Error', data.error || 'Failed to save security configuration');
+                            }
+                        } catch (error) {
+                            console.error('Failed to save config:', error);
+                            this.showNotification('error', 'Error', 'Failed to save security configuration');
+                        } finally {
+                            this.loading = false;
+                        }
+                    },
+
+                    async validateConfig() {
+                        this.loading = true;
+                        try {
+                            const response = await fetch('/api/config/security/validate', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(this.config)
+                            });
+
+                            const data = await response.json();
+
+                            if (data.success) {
+                                this.showNotification('success', 'Valid', 'Security configuration is valid');
+                            } else {
+                                this.showNotification('error', 'Invalid', data.error || 'Security configuration validation failed');
+                            }
+                        } catch (error) {
+                            console.error('Failed to validate config:', error);
+                            this.showNotification('error', 'Error', 'Failed to validate security configuration');
+                        } finally {
+                            this.loading = false;
+                        }
+                    },
+
+                    resetConfig() {
+                        this.config = JSON.parse(JSON.stringify(this.originalConfig));
+                        this.showNotification('info', 'Reset', 'Configuration reset to last saved state');
+                    },
+
+                    addAllowedOrigin() {
+                        this.config.security.allowed_origins.push("");
+                    },
+
+                    removeAllowedOrigin(index) {
+                        if (this.config.security.allowed_origins.length > 1) {
+                            this.config.security.allowed_origins.splice(index, 1);
+                        } else {
+                            this.showNotification('error', 'Error', 'At least one allowed origin is required');
+                        }
+                    },
+
+                    addAllowedMethod() {
+                        this.config.security.allowed_methods.push("GET");
+                    },
+
+                    removeAllowedMethod(index) {
+                        if (this.config.security.allowed_methods.length > 1) {
+                            this.config.security.allowed_methods.splice(index, 1);
+                        } else {
+                            this.showNotification('error', 'Error', 'At least one allowed method is required');
+                        }
+                    },
+
+                    addAllowedHeader() {
+                        this.config.security.allowed_headers.push("");
+                    },
+
+                    removeAllowedHeader(index) {
+                        if (this.config.security.allowed_headers.length > 1) {
+                            this.config.security.allowed_headers.splice(index, 1);
+                        } else {
+                            this.showNotification('error', 'Error', 'At least one allowed header is required');
+                        }
+                    },
+
+                    showNotification(type, title, message) {
+                        this.notification = {
+                            show: true,
+                            type,
+                            title,
+                            message
+                        };
+
+                        setTimeout(() => {
+                            this.notification.show = false;
+                        }, 5000);
+                    }
+                }
+            }
+        </script>
+    </div>
+</body>
+
+</html>

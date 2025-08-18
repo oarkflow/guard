@@ -1,0 +1,47 @@
+{
+    "detector": {
+        "name": "multiple_signup_detector",
+        "enabled": true,
+        "priority": 75,
+        "parameters": {
+            "signup_endpoints": [ "/signup", "/register", "/api/signup", "/api/register" ],
+            "max_signups": 3,
+            "window_size": "1h",
+            "key_template": "multiple_signup:{ip}",
+            "track_usernames": true,
+            "username_limit": 5
+        }
+    },
+    "action_rules": [
+        {
+            "name": "Multiple Signup Warning",
+            "description": "Warn when multiple signup attempts detected from same IP",
+            "min_severity": 3,
+            "min_confidence": 0.6,
+            "actions": [ "warning_action" ],
+            "threat_tags": [ "multiple_signup", "account_abuse" ],
+            "priority": 80,
+            "enabled": true
+        },
+        {
+            "name": "Multiple Signup CAPTCHA",
+            "description": "Require CAPTCHA for multiple signup attempts",
+            "min_severity": 5,
+            "min_confidence": 0.7,
+            "actions": [ "captcha_action" ],
+            "threat_tags": [ "multiple_signup", "account_abuse" ],
+            "priority": 85,
+            "enabled": true
+        },
+        {
+            "name": "Multiple Signup Block",
+            "description": "Block IPs with excessive signup attempts",
+            "min_severity": 7,
+            "min_confidence": 0.8,
+            "actions": [ "incremental_block_action" ],
+            "threat_tags": [ "multiple_signup", "account_abuse", "spam" ],
+            "priority": 90,
+            "enabled": true
+        }
+    ]
+}

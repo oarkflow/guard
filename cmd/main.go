@@ -371,4 +371,30 @@ func setupDemoRoutes(app *guard.Application) {
 			"username": username,
 		})
 	})
+
+	demo.Get("/signup", func(c *fiber.Ctx) error {
+		return c.SendFile("./demo/signup.html")
+	})
+
+	// Signup endpoint for multiple signup detection demo
+	demo.Post("/signup", func(c *fiber.Ctx) error {
+		username := c.FormValue("username")
+		email := c.FormValue("email")
+		_ = c.FormValue("password") // Ignore password for demo
+
+		// Get real IP for logging
+		ip := app.GetRealIP(c)
+
+		// Log the signup attempt
+		log.Info().Str("ip", ip).Str("username", username).Str("email", email).Msg("Signup attempt")
+
+		// For demo purposes, we'll always succeed but log the attempt
+		// In a real implementation, this would create an account
+		return c.JSON(fiber.Map{
+			"success":  true,
+			"message":  "Account created successfully",
+			"username": username,
+			"email":    email,
+		})
+	})
 }

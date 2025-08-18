@@ -385,8 +385,37 @@
                 </div>
             </div>
 
+            <!-- Detector Configuration Tab -->
+            <div x-show="activeTab === 'detectors'" class="space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800">Detector Configuration</h3>
+                    </div>
+
+                    <div id="detector-config-form">
+                        <!-- Detector configuration form will be loaded here -->
+                        <iframe src="detector-config.html" class="w-full h-screen" frameborder="0"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Configuration Tab -->
+            <div x-show="activeTab === 'actions'" class="space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800">Action Configuration</h3>
+                    </div>
+
+                    <div id="action-config-form">
+                        <!-- Action configuration form will be loaded here -->
+                        <iframe src="action-config.html" class="w-full h-screen" frameborder="0"></iframe>
+                    </div>
+                </div>
+            </div>
+
             <!-- Other tabs will be implemented similarly -->
-            <div x-show="activeTab !== 'overview' && activeTab !== 'server'" class="bg-white p-6 rounded-lg shadow">
+            <div x-show="activeTab !== 'overview' && activeTab !== 'server' && activeTab !== 'detectors' && activeTab !== 'actions'"
+                class="bg-white p-6 rounded-lg shadow">
                 <div class="text-center py-12">
                     <i class="fas fa-tools text-gray-400 text-4xl mb-4"></i>
                     <h3 class="text-lg font-semibold text-gray-800 mb-2">Under Development</h3>
