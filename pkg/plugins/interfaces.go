@@ -3,6 +3,8 @@ package plugins
 import (
 	"context"
 	"time"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 // RequestContext represents the context of an incoming request
@@ -66,6 +68,7 @@ type ActionPlugin interface {
 	Cleanup() error
 	Health() error
 	GetMetrics() map[string]any
+	Render(ctx context.Context, c *fiber.Ctx, data map[string]any) error
 }
 
 // SecurityEvent represents a security event in the system

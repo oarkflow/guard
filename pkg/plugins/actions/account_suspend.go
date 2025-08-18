@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/oarkflow/guard/pkg/plugins"
 	"github.com/oarkflow/guard/pkg/store"
 )
@@ -470,4 +471,8 @@ func (a *AccountSuspendAction) GetMetrics() map[string]interface{} {
 		"appeal_period":         a.config.AppealPeriod.String(),
 		"escalation_rules":      len(a.config.EscalationRules),
 	}
+}
+
+func (a *AccountSuspendAction) Render(ctx context.Context, c *fiber.Ctx, data map[string]any) error {
+	return c.Next()
 }

@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/oarkflow/guard/pkg/plugins"
 	"github.com/oarkflow/guard/pkg/store"
 )
@@ -367,4 +368,51 @@ func (a *BlockAction) GetMetrics() map[string]any {
 		"max_duration":     a.config.MaxDuration.String(),
 		"escalation_rules": len(a.config.EscalationRules),
 	}
+}
+
+func (a *BlockAction) Render(ctx context.Context, c *fiber.Ctx, response map[string]any) error {
+	if response == nil {
+		response = make(map[string]any)
+	}
+	ip, _ := response["ip"].(string)
+	blockDetails, err := a.GetDetailedBlockInfo(ctx, ip)
+	if err == nil && blockDetails != nil {
+		response["error"] = "Access denied"
+		response["message"] = blockDetails.FormatUserMessage()
+		response["request_id"] = c.Get("X-Request-ID")
+		response["blocked"] = true
+		response["permanent"] = blockDetails.IsPermanent
+		response["reason"] = blockDetails.Reason
+		response["blocked_at"] = blockDetails.BlockedAt.Format(time.RFC3339)
+
+		// Add retry information for temporary blocks
+		if !blockDetails.IsPermanent {
+			if blockDetails.RemainingTime > 0 {
+				response["retry_after"] = blockDetails.RetryAfter.Format(time.RFC3339)
+				response["retry_in_seconds"] = int(blockDetails.RemainingTime.Seconds())
+			} else {
+				response["retry_after"] = "now"
+				response["retry_in_seconds"] = 0
+			}
+		}
+
+		// Add violation information
+		if blockDetails.ViolationCount > 0 {
+			response["violation_count"] = blockDetails.ViolationCount
+		}
+
+		// Set appropriate HTTP headers
+		if !blockDetails.IsPermanent && blockDetails.RemainingTime > 0 {
+			c.Set("Retry-After", fmt.Sprintf("%d", int(blockDetails.RemainingTime.Seconds())))
+		}
+
+		return c.Status(fiber.StatusTooManyRequests).JSON(response)
+	}
+	// Fallback to basic response if detailed info is not available
+	return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+		"error":      "Access denied",
+		"message":    "Your request has been blocked due to security policy violations",
+		"request_id": c.Get("X-Request-ID"),
+		"blocked":    true,
+	})
 }

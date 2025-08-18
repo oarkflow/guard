@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/oarkflow/guard/pkg/plugins"
 	"github.com/oarkflow/guard/pkg/store"
 )
@@ -432,4 +433,25 @@ func (a *CaptchaAction) GetMetrics() map[string]interface{} {
 		"max_attempts":       a.config.MaxAttempts,
 		"difficulty":         a.config.Difficulty,
 	}
+}
+
+func (a *CaptchaAction) Render(ctx context.Context, c *fiber.Ctx, response map[string]any) error {
+	ip, _ := response["ip"].(string)
+	if hasChallenge, challenge, err := a.GetActiveChallenge(ctx, ip); err == nil && hasChallenge {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error":     "CAPTCHA required",
+			"message":   "Please complete the CAPTCHA challenge to continue",
+			"challenge": challenge.Challenge,
+			"token":     challenge.Token,
+			"blocked":   true,
+			"reason":    "Bot detection - CAPTCHA required",
+		})
+	}
+	// Fallback CAPTCHA response
+	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+		"error":   "CAPTCHA required",
+		"message": "Bot activity detected. CAPTCHA verification required.",
+		"blocked": true,
+		"reason":  "Bot detection",
+	})
 }

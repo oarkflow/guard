@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/oarkflow/guard/pkg/plugins"
 	"github.com/oarkflow/guard/pkg/store"
 )
@@ -359,4 +360,8 @@ func (a *SuspensionAction) GetMetrics() map[string]interface{} {
 		"max_duration":       a.config.MaxDuration.String(),
 		"escalation_rules":   len(a.config.EscalationRules),
 	}
+}
+
+func (a *SuspensionAction) Render(ctx context.Context, c *fiber.Ctx, data map[string]any) error {
+	return c.Next()
 }

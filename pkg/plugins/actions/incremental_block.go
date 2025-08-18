@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/oarkflow/guard/pkg/plugins"
 	"github.com/oarkflow/guard/pkg/store"
 )
@@ -302,4 +303,15 @@ func (a *IncrementalBlockAction) GetMetrics() map[string]interface{} {
 		"max_duration":     a.config.MaxDuration.String(),
 		"reset_period":     a.config.ResetPeriod.String(),
 	}
+}
+
+func (a *IncrementalBlockAction) Render(ctx context.Context, c *fiber.Ctx, data map[string]any) error {
+	// Handle incremental blocking
+	return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+		"error":      "Rate limit exceeded",
+		"message":    "Too many requests. Please slow down and try again later.",
+		"request_id": c.Get("X-Request-ID"),
+		"blocked":    true,
+		"reason":     "Rate limiting violation",
+	})
 }

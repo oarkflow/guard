@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/oarkflow/guard/pkg/plugins"
 	"github.com/oarkflow/guard/pkg/store"
 )
@@ -473,4 +474,14 @@ func (a *WarningAction) GetMetrics() map[string]interface{} {
 		"max_warnings_per_day": a.config.MaxWarningsPerDay,
 		"escalation_rules":     len(a.config.EscalationRules),
 	}
+}
+
+func (a *WarningAction) Render(ctx context.Context, c *fiber.Ctx, response map[string]any) error {
+	ip, _ := response["ip"].(string)
+	if warningData := a.GetWarningForResponse(ctx, ip); warningData != nil {
+		c.Set("X-Security-Warning", "true")
+		// Continue to next middleware but add warning headers
+		return c.Next()
+	}
+	return nil
 }

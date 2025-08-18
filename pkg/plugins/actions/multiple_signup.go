@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/oarkflow/guard/pkg/plugins"
 	"github.com/oarkflow/guard/pkg/store"
 )
@@ -372,4 +373,31 @@ func (a *MultipleSignupAction) GetMetrics() map[string]interface{} {
 		"block_duration":     a.config.BlockDuration.String(),
 		"escalation_rules":   len(a.config.EscalationRules),
 	}
+}
+
+func (a *MultipleSignupAction) Render(ctx context.Context, c *fiber.Ctx, response map[string]any) error {
+	ip, _ := response["ip"].(string)
+	if blocked, info, err := a.IsBlocked(ctx, ip); err == nil && blocked {
+		response := fiber.Map{
+			"error":      "Multiple signup attempts detected",
+			"message":    "Too many signup attempts from your IP address. Please try again later.",
+			"request_id": c.Get("X-Request-ID"),
+			"blocked":    true,
+			"reason":     "Multiple signup violation",
+		}
+
+		if info != nil && info.BlockDuration > 0 {
+			response["retry_after"] = info.LastSignup.Add(info.BlockDuration).Format(time.RFC3339)
+		}
+
+		return c.Status(fiber.StatusTooManyRequests).JSON(response)
+	}
+	// If no specific action handler matched, return generic block response
+	return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+		"error":      "Access denied",
+		"message":    "Your request has been blocked due to security policy violations",
+		"request_id": c.Get("X-Request-ID"),
+		"blocked":    true,
+		"reason":     "Security policy violation",
+	})
 }
