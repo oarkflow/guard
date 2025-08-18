@@ -271,7 +271,7 @@ func (re *RuleEngine) runDetections(ctx context.Context, reqCtx *plugins.Request
 }
 
 // evaluateDetections determines which actions to take based on configurable rules
-func (re *RuleEngine) evaluateDetections(detections []plugins.DetectionResult, reqCtx *plugins.RequestContext) []string {
+func (re *RuleEngine) evaluateDetections(detections []plugins.DetectionResult, _ *plugins.RequestContext) []string {
 	actions := make([]string, 0)
 
 	// Filter only threat detections
@@ -431,9 +431,19 @@ func (re *RuleEngine) executeAction(ctx context.Context, actionName string, reqC
 
 // shouldAllowRequest determines if a request should be allowed based on detections and actions
 func (re *RuleEngine) shouldAllowRequest(detections []plugins.DetectionResult, actions []string) bool {
+	// Define blocking actions that should deny the request
+	blockingActions := map[string]bool{
+		"block_action":             true,
+		"incremental_block_action": true,
+		"captcha_action":           true,
+		"multiple_signup_action":   true,
+		"suspension_action":        true,
+		"account_suspend_action":   true,
+	}
+
 	// Check if any blocking actions were executed
 	for _, action := range actions {
-		if action == "block_action" {
+		if blockingActions[action] {
 			return false
 		}
 	}

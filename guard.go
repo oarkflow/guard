@@ -478,7 +478,8 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 
 			// Return appropriate response based on highest severity action
 			for _, action := range result.Actions {
-				if action == "block_action" {
+				switch action {
+				case "block_action":
 					// Get detailed block information
 					blockAction, exists := app.registry.GetAction("block_action")
 					if exists {
@@ -527,8 +528,88 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 						"request_id": c.Get("X-Request-ID"),
 						"blocked":    true,
 					})
+
+				case "incremental_block_action":
+					// Handle incremental blocking
+					return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+						"error":      "Rate limit exceeded",
+						"message":    "Too many requests. Please slow down and try again later.",
+						"request_id": c.Get("X-Request-ID"),
+						"blocked":    true,
+						"reason":     "Rate limiting violation",
+					})
+
+				case "captcha_action":
+					// Handle CAPTCHA challenge
+					captchaAction, exists := app.registry.GetAction("captcha_action")
+					if exists {
+						if ca, ok := captchaAction.(*actions.CaptchaAction); ok {
+							if hasChallenge, challenge, err := ca.GetActiveChallenge(ctx, reqCtx.IP); err == nil && hasChallenge {
+								return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+									"error":     "CAPTCHA required",
+									"message":   "Please complete the CAPTCHA challenge to continue",
+									"challenge": challenge.Challenge,
+									"token":     challenge.Token,
+									"blocked":   true,
+									"reason":    "Bot detection - CAPTCHA required",
+								})
+							}
+						}
+					}
+					// Fallback CAPTCHA response
+					return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+						"error":   "CAPTCHA required",
+						"message": "Bot activity detected. CAPTCHA verification required.",
+						"blocked": true,
+						"reason":  "Bot detection",
+					})
+
+				case "warning_action":
+					// Handle warning (still allow but add warning)
+					warningAction, exists := app.registry.GetAction("warning_action")
+					if exists {
+						if wa, ok := warningAction.(*actions.WarningAction); ok {
+							if warningData := wa.GetWarningForResponse(ctx, reqCtx.IP); warningData != nil {
+								c.Set("X-Security-Warning", "true")
+								// Continue to next middleware but add warning headers
+								return c.Next()
+							}
+						}
+					}
+
+				case "multiple_signup_action":
+					// Handle multiple signup blocking
+					multipleSignupAction, exists := app.registry.GetAction("multiple_signup_action")
+					if exists {
+						if msa, ok := multipleSignupAction.(*actions.MultipleSignupAction); ok {
+							if blocked, info, err := msa.IsBlocked(ctx, reqCtx.IP); err == nil && blocked {
+								response := fiber.Map{
+									"error":      "Multiple signup attempts detected",
+									"message":    "Too many signup attempts from your IP address. Please try again later.",
+									"request_id": c.Get("X-Request-ID"),
+									"blocked":    true,
+									"reason":     "Multiple signup violation",
+								}
+
+								if info != nil && info.BlockDuration > 0 {
+									response["retry_after"] = info.LastSignup.Add(info.BlockDuration).Format(time.RFC3339)
+								}
+
+								return c.Status(fiber.StatusTooManyRequests).JSON(response)
+							}
+						}
+					}
 				}
 			}
+
+			// If no specific action handler matched, return generic block response
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error":      "Access denied",
+				"message":    "Your request has been blocked due to security policy violations",
+				"request_id": c.Get("X-Request-ID"),
+				"blocked":    true,
+				"reason":     "Security policy violation",
+			})
 		}
 
 		// Add security information to response headers
