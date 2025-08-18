@@ -3,12 +3,10 @@ package detectors
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
+	"github.com/oarkflow/filters"
 	"github.com/oarkflow/guard/pkg/plugins"
 )
 
@@ -472,161 +470,18 @@ func (d *GenericDetector) evaluateCondition(condition RuleCondition, reqCtx *plu
 
 // evaluateStringCondition evaluates a condition against a string value
 func (d *GenericDetector) evaluateStringCondition(condition RuleCondition, value string) bool {
-	if value == "" {
-		// For string-based operators, empty value rarely matches except explicit equals ""
-		if condition.Operator != "equals" && condition.Operator != "eq" && condition.Operator != "not_equals" && condition.Operator != "neq" && condition.Operator != "ne" {
-			return false
-		}
-	}
-
-	switch condition.Operator {
-	case "equals", "eq":
-		if strValue, ok := condition.Value.(string); ok {
-			return value == strValue
-		}
-	case "not_equals", "neq", "ne":
-		if strValue, ok := condition.Value.(string); ok {
-			return value != strValue
-		}
-	case "contains":
-		if strValue, ok := condition.Value.(string); ok {
-			return strings.Contains(value, strValue)
-		}
-	case "starts_with":
-		if strValue, ok := condition.Value.(string); ok {
-			return strings.HasPrefix(value, strValue)
-		}
-	case "ends_with":
-		if strValue, ok := condition.Value.(string); ok {
-			return strings.HasSuffix(value, strValue)
-		}
-	case "regex":
-		if strValue, ok := condition.Value.(string); ok {
-			if regex, err := regexp.Compile(strValue); err == nil {
-				return regex.MatchString(value)
-			}
-		}
-	case "in":
-		// Support list membership for strings
-		switch arr := condition.Value.(type) {
-		case []any:
-			for _, v := range arr {
-				if s, ok := v.(string); ok && s == value {
-					return true
-				}
-			}
-		case []string:
-			for _, s := range arr {
-				if s == value {
-					return true
-				}
-			}
-		}
-	case "not_in":
-		switch arr := condition.Value.(type) {
-		case []any:
-			for _, v := range arr {
-				if s, ok := v.(string); ok && s == value {
-					return false
-				}
-			}
-			return true
-		case []string:
-			for _, s := range arr {
-				if s == value {
-					return false
-				}
-			}
-			return true
-		}
-	case "length_greater_than":
-		if intValue, ok := condition.Value.(float64); ok {
-			return len(value) > int(intValue)
-		}
-	case "length_less_than":
-		if intValue, ok := condition.Value.(float64); ok {
-			return len(value) < int(intValue)
-		}
-	}
-
-	return false
+	filter := filters.NewFilter(condition.Field, filters.Operator(condition.Operator), condition.Value)
+	return filter.Match(map[string]any{
+		condition.Field: value,
+	})
 }
 
 // evaluateNumericCondition evaluates a condition against a numeric value
 func (d *GenericDetector) evaluateNumericCondition(condition RuleCondition, value float64) bool {
-	switch condition.Operator {
-	case "equals", "eq":
-		if v, ok := toFloat(condition.Value); ok {
-			return value == v
-		}
-	case "not_equals", "neq", "ne":
-		if v, ok := toFloat(condition.Value); ok {
-			return value != v
-		}
-	case "greater_than", "gt":
-		if v, ok := toFloat(condition.Value); ok {
-			return value > v
-		}
-	case "greater_than_or_equal", "gte":
-		if v, ok := toFloat(condition.Value); ok {
-			return value >= v
-		}
-	case "less_than", "lt":
-		if v, ok := toFloat(condition.Value); ok {
-			return value < v
-		}
-	case "less_than_or_equal", "lte":
-		if v, ok := toFloat(condition.Value); ok {
-			return value <= v
-		}
-	case "between", "range":
-		// Expect [min, max]
-		if arr, ok := condition.Value.([]any); ok && len(arr) == 2 {
-			if min, ok1 := toFloat(arr[0]); ok1 {
-				if max, ok2 := toFloat(arr[1]); ok2 {
-					return value >= min && value <= max
-				}
-			}
-		}
-	}
-	return false
-}
-
-// toFloat converts various numeric representations to float64
-func toFloat(v any) (float64, bool) {
-	switch t := v.(type) {
-	case float64:
-		return t, true
-	case float32:
-		return float64(t), true
-	case int:
-		return float64(t), true
-	case int64:
-		return float64(t), true
-	case int32:
-		return float64(t), true
-	case int16:
-		return float64(t), true
-	case int8:
-		return float64(t), true
-	case uint:
-		return float64(t), true
-	case uint64:
-		return float64(t), true
-	case uint32:
-		return float64(t), true
-	case uint16:
-		return float64(t), true
-	case uint8:
-		return float64(t), true
-	case string:
-		if f, err := strconv.ParseFloat(t, 64); err == nil {
-			return f, true
-		}
-		return 0, false
-	default:
-		return 0, false
-	}
+	filter := filters.NewFilter(condition.Field, filters.Operator(condition.Operator), condition.Value)
+	return filter.Match(map[string]any{
+		condition.Field: value,
+	})
 }
 
 // evaluateCustomCondition handles custom field evaluations

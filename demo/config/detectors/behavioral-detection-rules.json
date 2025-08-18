@@ -45,13 +45,13 @@
                                 {
                                     "field": "header",
                                     "key": "User-Agent",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)(curl|wget|python|java|go-http)"
                                 },
                                 {
                                     "field": "header",
                                     "key": "X-Forwarded-For",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|127\\.)"
                                 }
                             ]
@@ -72,7 +72,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "^/api/"
                         }
                     ],
@@ -99,12 +99,12 @@
                             "children": [
                                 {
                                     "field": "path",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)/(admin|root|sudo|superuser|administrator)"
                                 },
                                 {
                                     "field": "body",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)(role|permission|privilege).*[=:].*[\"']?(admin|root|superuser)[\"']?"
                                 }
                             ]
@@ -128,12 +128,12 @@
                             "children": [
                                 {
                                     "field": "path",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)/(export|download|backup|dump|extract)"
                                 },
                                 {
                                     "field": "query_param",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)(limit|count|size).*[=>].*[0-9]{4,}"
                                 }
                             ]
@@ -157,12 +157,12 @@
                             "children": [
                                 {
                                     "field": "path",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)/(robots\\.txt|sitemap\\.xml|\\.well-known|crossdomain\\.xml)"
                                 },
                                 {
                                     "field": "user_agent",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)(nmap|masscan|zap|burp|nikto|dirb|gobuster|wfuzz)"
                                 }
                             ]

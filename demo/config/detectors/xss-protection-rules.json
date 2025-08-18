@@ -17,7 +17,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)<\\s*script[^>]*>"
                         }
                     ],
@@ -36,7 +36,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)javascript\\s*:"
                         }
                     ],
@@ -55,7 +55,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)on\\w+\\s*="
                         }
                     ],
@@ -74,7 +74,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)<\\s*(iframe|object|embed)[^>]*>"
                         }
                     ],
@@ -93,7 +93,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)(eval|alert|confirm|prompt)\\s*\\("
                         }
                     ],
@@ -112,7 +112,7 @@
                     "conditions": [
                         {
                             "field": "body",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)<script[^>]*>.*?</script>|javascript:|on\\w+\\s*=|<\\s*(iframe|object|embed)[^>]*>"
                         }
                     ],

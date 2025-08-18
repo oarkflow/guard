@@ -20,12 +20,12 @@
                             "children": [
                                 {
                                     "field": "path",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)/(login|signin|auth|authenticate)"
                                 },
                                 {
                                     "field": "user_agent",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)(bot|crawler|spider|scraper|automated|python|curl|wget|postman|insomnia|^$)"
                                 }
                             ]
@@ -46,7 +46,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)/(login|signin|auth|authenticate)"
                         }
                     ],
@@ -73,12 +73,12 @@
                             "children": [
                                 {
                                     "field": "path",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)/(login|signin|auth|authenticate)"
                                 },
                                 {
                                     "field": "body",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)(username|email|user|login)"
                                 }
                             ]
@@ -106,7 +106,7 @@
                             "children": [
                                 {
                                     "field": "path",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)/(signup|register|create-account|join)"
                                 },
                                 {
@@ -139,12 +139,12 @@
                             "children": [
                                 {
                                     "field": "path",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)/(login|signin|auth|authenticate)"
                                 },
                                 {
                                     "field": "body",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)(password|passwd).*[=:].*[\"']?(123456|password|admin|qwerty|letmein|welcome|monkey|dragon)[\"']?"
                                 }
                             ]
@@ -165,7 +165,7 @@
                     "conditions": [
                         {
                             "field": "user_agent",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)bot"
                         }
                     ],

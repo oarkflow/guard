@@ -17,7 +17,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)/(admin|dashboard|management|control)"
                         }
                     ],
@@ -41,7 +41,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)/(login|signin|auth|authenticate)"
                         }
                     ],
@@ -68,12 +68,12 @@
                             "children": [
                                 {
                                     "field": "path",
-                                    "operator": "regex",
+                                    "operator": "pattern",
                                     "value": "(?i)/(login|signin|auth|authenticate)"
                                 },
                                 {
                                     "field": "country",
-                                    "operator": "not_in",
+                                    "operator": "nin",
                                     "value": [ "US", "CA", "GB", "DE", "FR", "AU", "JP" ]
                                 }
                             ]

@@ -17,7 +17,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "starts_with",
+                            "operator": "startswith",
                             "value": "/admin"
                         }
                     ],
@@ -36,7 +36,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)(\\.\\./|\\.\\.\\\\|%2e%2e%2f|%2e%2e%5c)"
                         }
                     ],
@@ -55,7 +55,7 @@
                     "conditions": [
                         {
                             "field": "body",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)(\\.\\./|\\.\\.\\\\|%2e%2e%2f|%2e%2e%5c)"
                         }
                     ],
@@ -74,7 +74,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)\\.(env|config|ini|conf|log|bak|backup|sql|db)$"
                         }
                     ],
@@ -93,7 +93,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)(;|\\||&|`|\\$\\(|\\${)"
                         }
                     ],
@@ -112,7 +112,7 @@
                     "conditions": [
                         {
                             "field": "body",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)(;\\s*(rm|cat|ls|ps|kill|wget|curl)|\\|\\s*(rm|cat|ls|ps|kill)|`.*`|\\$\\(.*\\))"
                         }
                     ],
@@ -131,7 +131,7 @@
                     "conditions": [
                         {
                             "field": "body",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)(password|passwd|secret|token|api_key|private_key)\\s*[=:]\\s*[\"']?[a-zA-Z0-9+/=]{8,}"
                         }
                     ],

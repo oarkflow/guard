@@ -17,7 +17,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)(union\\s+select|select\\s+.*\\s+from|insert\\s+into|delete\\s+from|drop\\s+table|create\\s+table)"
                         }
                     ],
@@ -36,7 +36,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)'\\s*(or|and)\\s*'"
                         }
                     ],
@@ -55,7 +55,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)\\b(exec|execute|sp_|xp_)\\w*\\s*\\("
                         }
                     ],
@@ -74,7 +74,7 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)(--\\s*$|/\\*.*\\*/)"
                         }
                     ],
@@ -93,7 +93,7 @@
                     "conditions": [
                         {
                             "field": "body",
-                            "operator": "regex",
+                            "operator": "pattern",
                             "value": "(?i)(union\\s+select|drop\\s+table|insert\\s+into|delete\\s+from|update\\s+.*\\s+set|exec\\s*\\(|execute\\s*\\()"
                         }
                     ],

@@ -8,6 +8,15 @@ require (
 )
 
 require (
+	github.com/goccy/go-reflect v1.2.0 // indirect
+	github.com/oarkflow/date v0.0.4 // indirect
+	github.com/oarkflow/dipper v0.0.6 // indirect
+	github.com/oarkflow/expr v0.0.11 // indirect
+	github.com/oarkflow/filters v0.0.36 // indirect
+	github.com/oarkflow/json v0.0.28 // indirect
+)
+
+require (
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/google/uuid v1.6.0 // indirect
@@ -15,7 +24,8 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
-	github.com/oarkflow/xid v1.2.5 // indirect
+	github.com/oarkflow/convert v0.0.5
+	github.com/oarkflow/xid v1.2.8 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.65.0 // indirect
