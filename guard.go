@@ -25,12 +25,12 @@ import (
 
 // Application holds the main application components
 type Application struct {
-	configManager        *config.Manager
-	registry             *plugins.PluginRegistry
-	eventBus             *events.EventBus
-	ruleEngine           *engine.RuleEngine
-	stateStore           store.StateStore
-	fiberApp             *fiber.App
+	configManager *config.Manager
+	registry      *plugins.PluginRegistry
+	eventBus      *events.EventBus
+	ruleEngine    *engine.RuleEngine
+	stateStore    store.StateStore
+	*fiber.App
 	tcpMiddleware        *tcp.TCPMiddleware
 	tcpHandler           *tcp.TCPProtectionHandler
 	tcpConfig            tcp.TCPProtectionConfig
@@ -43,7 +43,7 @@ type Options func(*Application)
 
 func WithApp(app *fiber.App) Options {
 	return func(a *Application) {
-		a.fiberApp = app
+		a.App = app
 	}
 }
 
@@ -110,9 +110,9 @@ func NewApplication(configFile string, opts ...Options) (*Application, error) {
 		opt(app)
 	}
 
-	if app.fiberApp == nil {
+	if app.App == nil {
 		// Create default Fiber app if not provided
-		app.fiberApp = fiber.New(fiber.Config{
+		app.App = fiber.New(fiber.Config{
 			ReadTimeout:  cfg.Server.ReadTimeout,
 			WriteTimeout: cfg.Server.WriteTimeout,
 			IdleTimeout:  cfg.Server.IdleTimeout,
@@ -124,7 +124,7 @@ func NewApplication(configFile string, opts ...Options) (*Application, error) {
 				})
 			},
 		})
-		app.fiberApp.Use(recover.New())
+		app.App.Use(recover.New())
 	}
 
 	if app.enableTCPMiddleware {
@@ -146,11 +146,11 @@ func NewApplication(configFile string, opts ...Options) (*Application, error) {
 		tcpHandler := tcp.NewTCPProtectionHandler(tcpMiddleware.GetProtection())
 		app.tcpMiddleware = tcpMiddleware
 		app.tcpHandler = tcpHandler
-		app.fiberApp.Use(app.createTCPProtectionMiddleware())
+		app.App.Use(app.createTCPProtectionMiddleware())
 	}
 
 	if app.enableDdosMiddleware {
-		app.fiberApp.Use(app.ddosProtectionMiddleware())
+		app.App.Use(app.ddosProtectionMiddleware())
 	}
 
 	return app, nil
@@ -175,46 +175,6 @@ func (app *Application) Initialize() error {
 	return nil
 }
 
-func (app *Application) Use(middleware ...any) {
-	app.fiberApp.Use(middleware...)
-}
-
-func (app *Application) AddRoute(method, path string, handlers ...fiber.Handler) {
-	app.fiberApp.Add(method, path, handlers...)
-}
-
-func (app *Application) Static(prefix, root string, config ...fiber.Static) {
-	app.fiberApp.Static(prefix, root, config...)
-}
-
-func (app *Application) Get(path string, handlers ...fiber.Handler) {
-	app.fiberApp.Get(path, handlers...)
-}
-
-func (app *Application) Post(path string, handlers ...fiber.Handler) {
-	app.fiberApp.Post(path, handlers...)
-}
-
-func (app *Application) All(path string, handlers ...fiber.Handler) {
-	app.fiberApp.All(path, handlers...)
-}
-
-func (app *Application) Delete(path string, handlers ...fiber.Handler) {
-	app.fiberApp.Delete(path, handlers...)
-}
-
-func (app *Application) Patch(path string, handlers ...fiber.Handler) {
-	app.fiberApp.Patch(path, handlers...)
-}
-
-func (app *Application) Trace(path string, handlers ...fiber.Handler) {
-	app.fiberApp.Trace(path, handlers...)
-}
-
-func (app *Application) AddRouteGroup(prefix string, handlers ...fiber.Handler) fiber.Router {
-	return app.fiberApp.Group(prefix, handlers...)
-}
-
 func (app *Application) GetRegistry() *plugins.PluginRegistry {
 	return app.registry
 }
@@ -232,7 +192,7 @@ func (app *Application) GetStateStore() store.StateStore {
 }
 
 func (app *Application) GetFiberApp() *fiber.App {
-	return app.fiberApp
+	return app.App
 }
 
 func (app *Application) GetTCPMiddleware() *tcp.TCPMiddleware {
@@ -723,7 +683,7 @@ func (app *Application) GetRealIP(c *fiber.Ctx) string {
 // setupRoutes sets up the application routes
 func (app *Application) setupRoutes() {
 	// Health check endpoint
-	app.fiberApp.Get("/health", func(c *fiber.Ctx) error {
+	app.App.Get("/health", func(c *fiber.Ctx) error {
 		health := map[string]any{
 			"status":    "healthy",
 			"timestamp": time.Now(),
@@ -746,7 +706,7 @@ func (app *Application) setupRoutes() {
 	})
 
 	// Metrics endpoint
-	app.fiberApp.Get("/metrics", func(c *fiber.Ctx) error {
+	app.App.Get("/metrics", func(c *fiber.Ctx) error {
 		metrics := map[string]any{
 			"rule_engine": app.ruleEngine.GetMetrics(),
 			"event_bus":   app.eventBus.GetStats(),
@@ -772,13 +732,13 @@ func (app *Application) setupRoutes() {
 	})
 
 	// Plugin management endpoints
-	app.fiberApp.Get("/admin/plugins", func(c *fiber.Ctx) error {
+	app.App.Get("/admin/plugins", func(c *fiber.Ctx) error {
 		return c.JSON(app.registry.GetAllPluginMetadata())
 	})
 
 	// TCP protection management endpoints
 	if app.tcpHandler != nil {
-		tcpAdmin := app.fiberApp.Group("/admin/tcp")
+		tcpAdmin := app.App.Group("/admin/tcp")
 
 		tcpAdmin.Get("/metrics", func(c *fiber.Ctx) error {
 			metrics := app.tcpMiddleware.GetMetrics()
@@ -851,7 +811,7 @@ func (app *Application) Start(ctx context.Context) error {
 		log.Info().Msg("📁 Config file watcher started")
 	}
 
-	return app.fiberApp.Listen(address)
+	return app.App.Listen(address)
 }
 
 func (app *Application) StartTLS(ctx context.Context) error {
@@ -886,7 +846,7 @@ func (app *Application) StartTLS(ctx context.Context) error {
 	}
 
 	// Start Fiber with TLS
-	return app.fiberApp.ListenTLS(address, cfg.Server.TLSCertFile, cfg.Server.TLSKeyFile)
+	return app.App.ListenTLS(address, cfg.Server.TLSCertFile, cfg.Server.TLSKeyFile)
 }
 
 // Shutdown gracefully shuts down the application
@@ -902,7 +862,7 @@ func (app *Application) Shutdown() error {
 	}
 
 	// Shutdown Fiber app
-	if err := app.fiberApp.Shutdown(); err != nil {
+	if err := app.App.Shutdown(); err != nil {
 		log.Error().Err(err).Msg("Error shutting down Fiber app")
 	}
 

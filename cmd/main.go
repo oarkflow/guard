@@ -70,7 +70,7 @@ func setupDemoRoutes(app *guard.Application) {
 	app.Static("/demo", "./demo")
 
 	// Demo API endpoints
-	demo := app.AddRouteGroup("/demo")
+	demo := app.Group("/demo")
 
 	// Main demo page
 	demo.Get("/", func(c *fiber.Ctx) error {
@@ -324,7 +324,7 @@ func setupDemoRoutes(app *guard.Application) {
 	})
 
 	// Enhanced test endpoints for demo
-	test := app.AddRouteGroup("/test")
+	test := app.Group("/test")
 
 	// XSS test endpoint
 	test.Post("/xss", func(c *fiber.Ctx) error {
