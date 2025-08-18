@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/oarkflow/log"
 
+	"github.com/oarkflow/guard/pkg/api"
 	"github.com/oarkflow/guard/pkg/config"
 
 	"github.com/oarkflow/guard/pkg/engine"
@@ -189,6 +191,9 @@ func (app *Application) Initialize() error {
 
 	// Setup routes
 	app.setupRoutes()
+
+	// Setup configuration API
+	app.setupConfigAPI()
 
 	log.Info().Msg("Application initialized successfully")
 	return nil
@@ -610,7 +615,7 @@ func (app *Application) createTCPProtectionMiddleware() fiber.Handler {
 		// Create a fake net.Addr from the request
 		remoteAddr := &tcpAddr{
 			network: "tcp",
-			address: c.IP(),
+			address: c.IP() + ":" + c.Port(),
 		}
 
 		// Check connection with TCP protection
@@ -805,6 +810,27 @@ func (app *Application) setupRoutes() {
 			return c.JSON(fiber.Map{"message": fmt.Sprintf("IP %s removed from blacklist", ip)})
 		})
 	}
+}
+
+// setupConfigAPI sets up the configuration management API
+func (app *Application) setupConfigAPI() {
+	// Determine config directory
+	configDir := "config"
+	if app.configManager.GetConfigPath() != "" {
+		configDir = filepath.Dir(app.configManager.GetConfigPath())
+		// If it's a single file, use the default config directory
+		if !strings.HasSuffix(configDir, "config") {
+			configDir = "config"
+		}
+	}
+
+	// Create configuration API
+	configAPI := api.NewConfigAPI(app.configManager, configDir)
+
+	// Register API routes
+	configAPI.RegisterRoutes(app.App)
+
+	log.Info().Str("config_dir", configDir).Msg("Configuration API initialized")
 }
 
 // Start starts the application

@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guard Configuration Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .config-card {
+            transition: all 0.3s ease;
+        }
+
+        .config-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .json-editor {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-healthy {
+            background-color: #10b981;
+        }
+
+        .status-warning {
+            background-color: #f59e0b;
+        }
+
+        .status-error {
+            background-color: #ef4444;
+        }
+
+        .sidebar-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar-hidden {
+                transform: translateX(-100%);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50" x-data="configDashboard()">
+    <!-- Mobile menu button -->
+    <div class="md:hidden fixed top-4 left-4 z-50">
+        <button @click="sidebarOpen = !sidebarOpen" class="bg-white p-2 rounded-md shadow-md">
+            <i class="fas fa-bars text-gray-600"></i>
+        </button>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-lg sidebar-transition"
+        :class="{'sidebar-hidden': !sidebarOpen}">
+        <div class="flex flex-col h-full">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-6 border-b">
+                <div class="flex items-center">
+                    <i class="fas fa-shield-alt text-blue-600 text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold text-gray-800">Guard Config</h1>
+                </div>
+                <button @click="sidebarOpen = false" class="md:hidden text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 p-4 space-y-2">
+                <a href="#overview" @click="activeTab = 'overview'; sidebarOpen = false"
+                    :class="activeTab === 'overview' ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' : 'text-gray-600 hover:bg-gray-50'"
+                    class="flex items-center px-4 py-3 rounded-lg transition-colors">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    Overview
+                </a>
+                <a href="#server" @click="activeTab = 'server'; sidebarOpen = false"
+                    :class="activeTab === 'server' ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' : 'text-gray-600 hover:bg-gray-50'"
+                    class="flex items-center px-4 py-3 rounded-lg transition-colors">
+                    <i class="fas fa-server mr-3"></i>
+                    Server Config
+                </a>
+                <a href="#global" @click="activeTab = 'global'; sidebarOpen = false"
+                    :class="activeTab === 'global' ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' : 'text-gray-600 hover:bg-gray-50'"
+                    class="flex items-center px-4 py-3 rounded-lg transition-colors">
+                    <i class="fas fa-globe mr-3"></i>
+                    Global Config
+                </a>
+                <a href="#detectors" @click="activeTab = 'detectors'; sidebarOpen = false"
+                    :class="activeTab === 'detectors' ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' : 'text-gray-600 hover:bg-gray-50'"
+                    class="flex items-center px-4 py-3 rounded-lg transition-colors">
+                    <i class="fas fa-search mr-3"></i>
+                    Detectors
+                </a>
+                <a href="#actions" @click="activeTab = 'actions'; sidebarOpen = false"
+                    :class="activeTab === 'actions' ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' : 'text-gray-600 hover:bg-gray-50'"
+                    class="flex items-center px-4 py-3 rounded-lg transition-colors">
+                    <i class="fas fa-bolt mr-3"></i>
+                    Actions
+                </a>
+                <a href="#handlers" @click="activeTab = 'handlers'; sidebarOpen = false"
+                    :class="activeTab === 'handlers' ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' : 'text-gray-600 hover:bg-gray-50'"
+                    class="flex items-center px-4 py-3 rounded-lg transition-colors">
+                    <i class="fas fa-cogs mr-3"></i>
+                    Handlers
+                </a>
+                <a href="#tcp" @click="activeTab = 'tcp'; sidebarOpen = false"
+                    :class="activeTab === 'tcp' ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' : 'text-gray-600 hover:bg-gray-50'"
+                    class="flex items-center px-4 py-3 rounded-lg transition-colors">
+                    <i class="fas fa-network-wired mr-3"></i>
+                    TCP Protection
+                </a>
+                <a href="#security" @click="activeTab = 'security'; sidebarOpen = false"
+                    :class="activeTab === 'security' ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' : 'text-gray-600 hover:bg-gray-50'"
+                    class="flex items-center px-4 py-3 rounded-lg transition-colors">
+                    <i class="fas fa-lock mr-3"></i>
+                    Security
+                </a>
+            </nav>
+
+            <!-- Footer -->
+            <div class="p-4 border-t">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-gray-600">System Status</span>
+                    <div class="flex items-center">
+                        <span class="status-indicator"
+                            :class="systemStatus.healthy ? 'status-healthy' : 'status-error'"></span>
+                        <span class="text-sm" :class="systemStatus.healthy ? 'text-green-600' : 'text-red-600'"
+                            x-text="systemStatus.healthy ? 'Healthy' : 'Error'"></span>
+                    </div>
+                </div>
+                <button @click="reloadConfig()" :disabled="loading"
+                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                    <i class="fas fa-sync-alt mr-2" :class="{'fa-spin': loading}"></i>
+                    Reload Config
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="md:ml-64 min-h-screen">
+        <!-- Top Bar -->
+        <div class="bg-white shadow-sm border-b px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800" x-text="getTabTitle()"></h2>
+                    <p class="text-gray-600 mt-1" x-text="getTabDescription()"></p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <!-- Status Badge -->
+                    <div class="flex items-center px-3 py-1 rounded-full text-sm"
+                        :class="systemStatus.healthy ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                        <span class="status-indicator"
+                            :class="systemStatus.healthy ? 'status-healthy' : 'status-error'"></span>
+                        <span x-text="systemStatus.healthy ? 'System Healthy' : 'System Error'"></span>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex space-x-2">
+                        <button @click="validateConfig()" :disabled="loading"
+                            class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 disabled:opacity-50 transition-colors">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Validate
+                        </button>
+                        <button @click="exportConfig()" :disabled="loading"
+                            class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
+                            <i class="fas fa-download mr-2"></i>
+                            Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="p-6">
+            <!-- Overview Tab -->
+            <div x-show="activeTab === 'overview'" class="space-y-6">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow config-card">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-blue-100 rounded-lg">
+                                <i class="fas fa-file-alt text-blue-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-gray-600">Total Files</p>
+                                <p class="text-2xl font-bold text-gray-800" x-text="overview.total_files || 0"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-lg shadow config-card">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-green-100 rounded-lg">
+                                <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-gray-600">Valid Files</p>
+                                <p class="text-2xl font-bold text-gray-800" x-text="overview.valid_files || 0"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-lg shadow config-card">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-red-100 rounded-lg">
+                                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-gray-600">Invalid Files</p>
+                                <p class="text-2xl font-bold text-gray-800" x-text="overview.invalid_files || 0"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-lg shadow config-card">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-purple-100 rounded-lg">
+                                <i class="fas fa-puzzle-piece text-purple-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-gray-600">Total Plugins</p>
+                                <p class="text-2xl font-bold text-gray-800" x-text="getTotalPlugins()"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuration Overview -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- System Information -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">System Information</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Configuration Type:</span>
+                                <span class="font-medium" x-text="overview.config_type || 'Unknown'"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Config Directory:</span>
+                                <span class="font-medium text-sm" x-text="overview.config_dir || 'N/A'"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Server Address:</span>
+                                <span class="font-medium"
+                                    x-text="overview.server?.address + ':' + overview.server?.port || 'N/A'"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Store Type:</span>
+                                <span class="font-medium" x-text="overview.store?.type || 'N/A'"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Plugin Distribution -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Plugin Distribution</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <i class="fas fa-search text-blue-600 mr-2"></i>
+                                    <span class="text-gray-600">Detectors</span>
+                                </div>
+                                <span class="font-bold text-blue-600" x-text="overview.plugins?.detectors || 0"></span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <i class="fas fa-bolt text-yellow-600 mr-2"></i>
+                                    <span class="text-gray-600">Actions</span>
+                                </div>
+                                <span class="font-bold text-yellow-600" x-text="overview.plugins?.actions || 0"></span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <i class="fas fa-cogs text-green-600 mr-2"></i>
+                                    <span class="text-gray-600">Handlers</span>
+                                </div>
+                                <span class="font-bold text-green-600" x-text="overview.plugins?.handlers || 0"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Files -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Configuration Files</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        File</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Type</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Status</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Size</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Modified</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <template x-for="file in configFiles" :key="file.path">
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <i class="fas fa-file-code text-gray-400 mr-2"></i>
+                                                <span class="text-sm font-medium text-gray-900"
+                                                    x-text="file.name"></span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
+                                                :class="getTypeColor(file.type)" x-text="file.type"></span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <span class="status-indicator"
+                                                    :class="file.valid ? 'status-healthy' : 'status-error'"></span>
+                                                <span class="text-sm"
+                                                    :class="file.valid ? 'text-green-600' : 'text-red-600'"
+                                                    x-text="file.valid ? 'Valid' : 'Invalid'"></span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                            x-text="formatFileSize(file.size)"></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                            x-text="formatDate(file.last_modified)"></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <button @click="editFile(file)"
+                                                class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                                            <button @click="validateFile(file)"
+                                                class="text-yellow-600 hover:text-yellow-900">Validate</button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Server Configuration Tab -->
+            <div x-show="activeTab === 'server'" class="space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800">Server Configuration</h3>
+                        <button @click="saveServerConfig()" :disabled="loading"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                            <i class="fas fa-save mr-2"></i>
+                            Save Changes
+                        </button>
+                    </div>
+
+                    <div id="server-config-form">
+                        <!-- Server configuration form will be loaded here -->
+                        <div class="text-center py-8">
+                            <i class="fas fa-spinner fa-spin text-gray-400 text-2xl mb-4"></i>
+                            <p class="text-gray-500">Loading server configuration...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other tabs will be implemented similarly -->
+            <div x-show="activeTab !== 'overview' && activeTab !== 'server'" class="bg-white p-6 rounded-lg shadow">
+                <div class="text-center py-12">
+                    <i class="fas fa-tools text-gray-400 text-4xl mb-4"></i>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Under Development</h3>
+                    <p class="text-gray-600">This configuration section is being developed.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div x-show="loading" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <div class="flex items-center">
+                <i class="fas fa-spinner fa-spin text-blue-600 text-xl mr-3"></i>
+                <span class="text-gray-800">Processing...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div x-show="notification.show" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 transform translate-y-2"
+        x-transition:enter-end="opacity-100 transform translate-y-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 transform translate-y-0"
+        x-transition:leave-end="opacity-0 transform translate-y-2" class="fixed top-4 right-4 z-50 max-w-sm">
+        <div class="bg-white border-l-4 p-4 rounded-lg shadow-lg"
+            :class="notification.type === 'success' ? 'border-green-500' : notification.type === 'error' ? 'border-red-500' : 'border-yellow-500'">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="text-xl"
+                        :class="notification.type === 'success' ? 'fas fa-check-circle text-green-500' : notification.type === 'error' ? 'fas fa-exclamation-circle text-red-500' : 'fas fa-exclamation-triangle text-yellow-500'"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-800" x-text="notification.title"></p>
+                    <p class="text-sm text-gray-600 mt-1" x-text="notification.message"></p>
+                </div>
+                <div class="ml-auto pl-3">
+                    <button @click="notification.show = false" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function configDashboard() {
+            return {
+                activeTab: 'overview',
+                sidebarOpen: false,
+                loading: false,
+                overview: {},
+                configFiles: [],
+                systemStatus: { healthy: true },
+                notification: {
+                    show: false,
+                    type: 'success',
+                    title: '',
+                    message: ''
+                },
+
+                async init() {
+                    await this.loadOverview();
+                    await this.loadConfigFiles();
+                    await this.checkSystemStatus();
+
+                    // Auto-refresh every 30 seconds
+                    setInterval(() => {
+                        this.checkSystemStatus();
+                    }, 30000);
+                },
+
+                async loadOverview() {
+                    try {
+                        const response = await fetch('/api/config/');
+                        const data = await response.json();
+                        if (data.success) {
+                            this.overview = data.data;
+                        }
+                    } catch (error) {
+                        console.error('Failed to load overview:', error);
+                    }
+                },
+
+                async loadConfigFiles() {
+                    try {
+                        const response = await fetch('/api/config/files');
+                        const data = await response.json();
+                        if (data.success) {
+                            this.configFiles = data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('Failed to load config files:', error);
+                    }
+                },
+
+                async checkSystemStatus() {
+                    try {
+                        const response = await fetch('/api/config/status');
+                        const data = await response.json();
+                        if (data.success) {
+                            this.systemStatus = data.data;
+                        }
+                    } catch (error) {
+                        console.error('Failed to check system status:', error);
+                        this.systemStatus.healthy = false;
+                    }
+                },
+
+                async reloadConfig() {
+                    this.loading = true;
+                    try {
+                        const response = await fetch('/api/config/reload', { method: 'POST' });
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.showNotification('success', 'Success', 'Configuration reloaded successfully');
+                            await this.loadOverview();
+                            await this.checkSystemStatus();
+                        } else {
+                            this.showNotification('error', 'Error', data.error || 'Failed to reload configuration');
+                        }
+                    } catch (error) {
+                        this.showNotification('error', 'Error', 'Failed to reload configuration');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async validateConfig() {
+                    this.loading = true;
+                    try {
+                        const response = await fetch('/api/config/validate', { method: 'POST' });
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.showNotification('success', 'Validation Passed', 'All configuration files are valid');
+                        } else {
+                            this.showNotification('error', 'Validation Failed', data.error || 'Configuration validation failed');
+                        }
+                    } catch (error) {
+                        this.showNotification('error', 'Error', 'Failed to validate configuration');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async exportConfig() {
+                    try {
+                        const response = await fetch('/api/config/export');
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `guard-config-${new Date().toISOString().split('T')[0]}.zip`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            window.URL.revokeObjectURL(url);
+                            this.showNotification('success', 'Export Complete', 'Configuration exported successfully');
+                        } else {
+                            this.showNotification('error', 'Export Failed', 'Failed to export configuration');
+                        }
+                    } catch (error) {
+                        this.showNotification('error', 'Error', 'Failed to export configuration');
+                    }
+                },
+
+                editFile(file) {
+                    // TODO: Implement file editing
+                    this.showNotification('info', 'Coming Soon', 'File editing interface is being developed');
+                },
+
+                async validateFile(file) {
+                    this.loading = true;
+                    try {
+                        const response = await fetch(`/api/config/validate/file/${file.path}`, { method: 'POST' });
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.showNotification('success', 'File Valid', `${file.name} is valid`);
+                        } else {
+                            this.showNotification('error', 'File Invalid', data.error || `${file.name} validation failed`);
+                        }
+                    } catch (error) {
+                        this.showNotification('error', 'Error', `Failed to validate ${file.name}`);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                showNotification(type, title, message) {
+                    this.notification = {
+                        show: true,
+                        type,
+                        title,
+                        message
+                    };
+
+                    setTimeout(() => {
+                        this.notification.show = false;
+                    }, 5000);
+                },
+
+                getTabTitle() {
+                    const titles = {
+                        overview: 'Configuration Overview',
+                        server: 'Server Configuration',
+                        global: 'Global Configuration',
+                        detectors: 'Detector Rules',
+                        actions: 'Action Rules',
+                        handlers: 'Event Handlers',
+                        tcp: 'TCP Protection',
+                        security: 'Security Settings'
+                    };
+                    return titles[this.activeTab] || 'Configuration';
+                },
+
+                getTabDescription() {
+                    const descriptions = {
+                        overview: 'System overview and configuration status',
+                        server: 'Server settings and network configuration',
+                        global: 'Global system settings and engine configuration',
+                        detectors: 'Threat detection rules and parameters',
+                        actions: 'Response actions and escalation rules',
+                        handlers: 'Event handlers and notification settings',
+                        tcp: 'TCP-level protection and rate limiting',
+                        security: 'Security policies and access control'
+                    };
+                    return descriptions[this.activeTab] || 'Configuration settings';
+                },
+
+                getTotalPlugins() {
+                    const plugins = this.overview.plugins || {};
+                    return (plugins.detectors || 0) + (plugins.actions || 0) + (plugins.handlers || 0);
+                },
+
+                getTypeColor(type) {
+                    const colors = {
+                        'server': 'bg-blue-100 text-blue-800',
+                        'global': 'bg-green-100 text-green-800',
+                        'detector': 'bg-purple-100 text-purple-800',
+                        'action': 'bg-yellow-100 text-yellow-800',
+                        'handler': 'bg-indigo-100 text-indigo-800',
+                        'tcp': 'bg-red-100 text-red-800',
+                        'security': 'bg-gray-100 text-gray-800'
+                    };
+                    return colors[type] || 'bg-gray-100 text-gray-800';
+                },
+
+                formatFileSize(bytes) {
+                    if (!bytes) return '0 B';
+                    const k = 1024;
+                    const sizes = ['B', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                },
+
+                formatDate(dateString) {
+                    if (!dateString) return 'N/A';
+                    return new Date(dateString).toLocaleDateString() + ' ' + new Date(dateString).toLocaleTimeString();
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
