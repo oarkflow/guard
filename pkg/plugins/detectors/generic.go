@@ -2,6 +2,7 @@ package detectors
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -93,136 +94,13 @@ func (d *GenericDetector) Initialize(config map[string]any) error {
 		d.stateStore = stateStore
 	}
 
-	// Parse rules from configuration
-	if rules, ok := config["rules"].([]any); ok {
-		d.rules = make([]GenericRule, 0, len(rules))
-		for _, rule := range rules {
-			if ruleMap, ok := rule.(map[string]any); ok {
-				genericRule := GenericRule{
-					Parameters: make(map[string]any),
-					Conditions: make([]RuleCondition, 0),
-					Actions:    make([]string, 0),
-					Tags:       make([]string, 0),
-					Metadata:   make(map[string]any),
-				}
-
-				// Parse basic rule fields
-				if id, ok := ruleMap["id"].(string); ok {
-					genericRule.ID = id
-				}
-				if name, ok := ruleMap["name"].(string); ok {
-					genericRule.Name = name
-				}
-				if description, ok := ruleMap["description"].(string); ok {
-					genericRule.Description = description
-				}
-				if enabled, ok := ruleMap["enabled"].(bool); ok {
-					genericRule.Enabled = enabled
-				} else {
-					genericRule.Enabled = true // Default to enabled
-				}
-				if ruleType, ok := ruleMap["type"].(string); ok {
-					genericRule.Type = ruleType
-				}
-				if severity, ok := ruleMap["severity"].(float64); ok {
-					genericRule.Severity = int(severity)
-				} else if severityInt, ok := ruleMap["severity"].(int); ok {
-					genericRule.Severity = severityInt
-				}
-				if confidence, ok := ruleMap["confidence"].(float64); ok {
-					genericRule.Confidence = confidence
-				}
-				if priority, ok := ruleMap["priority"].(float64); ok {
-					genericRule.Priority = int(priority)
-				} else if priorityInt, ok := ruleMap["priority"].(int); ok {
-					genericRule.Priority = priorityInt
-				}
-
-				// Parse parameters
-				if params, ok := ruleMap["parameters"].(map[string]any); ok {
-					genericRule.Parameters = params
-				}
-
-				// Parse conditions
-				if conditions, ok := ruleMap["conditions"].([]any); ok {
-					for _, condition := range conditions {
-						if condMap, ok := condition.(map[string]any); ok {
-							ruleCondition := RuleCondition{}
-							if field, ok := condMap["field"].(string); ok {
-								ruleCondition.Field = field
-							}
-							if operator, ok := condMap["operator"].(string); ok {
-								ruleCondition.Operator = operator
-							}
-							if key, ok := condMap["key"].(string); ok {
-								ruleCondition.Key = key
-							}
-							if value, ok := condMap["value"]; ok {
-								ruleCondition.Value = value
-							}
-							if negate, ok := condMap["negate"].(bool); ok {
-								ruleCondition.Negate = negate
-							}
-							if children, ok := condMap["children"].([]any); ok {
-								ruleCondition.Children = make([]RuleCondition, 0, len(children))
-								for _, child := range children {
-									if childMap, ok := child.(map[string]any); ok {
-										childCondition := RuleCondition{}
-										if field, ok := childMap["field"].(string); ok {
-											childCondition.Field = field
-										}
-										if operator, ok := childMap["operator"].(string); ok {
-											childCondition.Operator = operator
-										}
-										if key, ok := childMap["key"].(string); ok {
-											childCondition.Key = key
-										}
-										if value, ok := childMap["value"]; ok {
-											childCondition.Value = value
-										}
-										if negate, ok := childMap["negate"].(bool); ok {
-											childCondition.Negate = negate
-										}
-										ruleCondition.Children = append(ruleCondition.Children, childCondition)
-									}
-								}
-							}
-							if logical, ok := condMap["logical"].(string); ok {
-								ruleCondition.Logical = logical
-							}
-							genericRule.Conditions = append(genericRule.Conditions, ruleCondition)
-						}
-					}
-				}
-
-				// Parse actions
-				if actions, ok := ruleMap["actions"].([]any); ok {
-					for _, action := range actions {
-						if actionStr, ok := action.(string); ok {
-							genericRule.Actions = append(genericRule.Actions, actionStr)
-						}
-					}
-				}
-
-				// Parse tags
-				if tags, ok := ruleMap["tags"].([]any); ok {
-					for _, tag := range tags {
-						if tagStr, ok := tag.(string); ok {
-							genericRule.Tags = append(genericRule.Tags, tagStr)
-						}
-					}
-				}
-
-				// Parse metadata
-				if metadata, ok := ruleMap["metadata"].(map[string]any); ok {
-					genericRule.Metadata = metadata
-				}
-
-				d.rules = append(d.rules, genericRule)
-			}
-		}
+	var rules []GenericRule
+	bt, _ := json.Marshal(config["rules"])
+	err := json.Unmarshal(bt, &rules)
+	if err != nil {
+		return err
 	}
-
+	d.rules = rules
 	return nil
 }
 
@@ -470,31 +348,26 @@ func (d *GenericDetector) evaluateCondition(condition RuleCondition, reqCtx *plu
 
 // evaluateStringCondition evaluates a condition against a string value
 func (d *GenericDetector) evaluateStringCondition(condition RuleCondition, value string) bool {
-	filter := filters.NewFilter(condition.Field, filters.Operator(condition.Operator), condition.Value)
-	return filter.Match(map[string]any{
+	return d.match(condition, map[string]any{
 		condition.Field: value,
 	})
 }
 
 // evaluateNumericCondition evaluates a condition against a numeric value
 func (d *GenericDetector) evaluateNumericCondition(condition RuleCondition, value float64) bool {
-	filter := filters.NewFilter(condition.Field, filters.Operator(condition.Operator), condition.Value)
-	return filter.Match(map[string]any{
+	return d.match(condition, map[string]any{
 		condition.Field: value,
 	})
 }
 
 // evaluateCustomCondition handles custom field evaluations
 func (d *GenericDetector) evaluateCustomCondition(condition RuleCondition, reqCtx *plugins.RequestContext) bool {
-	// Check if the condition field exists in the request context metadata
-	if metadataValue, exists := reqCtx.Metadata[condition.Field]; exists {
-		// Convert metadata value to string for comparison
-		if strValue, ok := metadataValue.(string); ok {
-			return d.evaluateStringCondition(condition, strValue)
-		}
-	}
+	return d.match(condition, reqCtx.Metadata)
+}
 
-	return false
+func (d *GenericDetector) match(condition RuleCondition, data any) bool {
+	filter := filters.NewFilter(condition.Field, filters.Operator(condition.Operator), condition.Value)
+	return filter.Match(data)
 }
 
 // Cleanup cleans up plugin resources
