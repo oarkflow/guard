@@ -348,6 +348,21 @@ func (app *Application) registerBuiltinPlugins() error {
 		return fmt.Errorf("failed to register captcha action: %w", err)
 	}
 
+	multipleSignupAction := actions.NewMultipleSignupAction(app.stateStore)
+	if err := app.registry.RegisterAction(
+		multipleSignupAction,
+		plugins.PluginMetadata{
+			Name:        multipleSignupAction.Name(),
+			Version:     multipleSignupAction.Version(),
+			Description: multipleSignupAction.Description(),
+			Type:        "action",
+			Author:      "System",
+		},
+		cfg.Plugins.Actions["multiple_signup_action"],
+	); err != nil {
+		return fmt.Errorf("failed to register multiple signup action: %w", err)
+	}
+
 	// Register event handler plugins
 	securityLogger := handlers.NewSecurityLoggerHandler()
 	if err := app.registry.RegisterHandler(

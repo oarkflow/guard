@@ -1,0 +1,52 @@
+{
+    "action": {
+        "name": "warning_action",
+        "enabled": true,
+        "priority": 75,
+        "parameters": {
+            "warning_types": [ "api", "page" ],
+            "default_message": "Security warning: Suspicious activity detected from your connection",
+            "message_templates": {
+                "info": "Information: Please be aware that your activity is being monitored for security purposes",
+                "warning": "Warning: Suspicious activity detected. Please ensure you are following security guidelines",
+                "error": "Error: Security policy violation detected. Your access may be restricted if this continues",
+                "critical": "Critical: Severe security violation detected. Your access is being reviewed"
+            },
+            "show_duration": "30m",
+            "cooldown_period": "5m",
+            "max_warnings_per_day": 10,
+            "include_details": false,
+            "log_warnings": true,
+            "escalation_rules": [
+                {
+                    "violation_count": 1,
+                    "warning_type": "info",
+                    "message_key": "info",
+                    "show_duration": "15m",
+                    "require_ack": false
+                },
+                {
+                    "violation_count": 3,
+                    "warning_type": "warning",
+                    "message_key": "warning",
+                    "show_duration": "30m",
+                    "require_ack": false
+                },
+                {
+                    "violation_count": 5,
+                    "warning_type": "error",
+                    "message_key": "error",
+                    "show_duration": "60m",
+                    "require_ack": true
+                },
+                {
+                    "violation_count": 10,
+                    "warning_type": "critical",
+                    "message_key": "critical",
+                    "show_duration": "120m",
+                    "require_ack": true
+                }
+            ]
+        }
+    }
+}

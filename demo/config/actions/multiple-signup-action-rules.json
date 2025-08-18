@@ -6,6 +6,10 @@
         "parameters": {
             "log_multiple_signups": true,
             "notification_threshold": 3,
+            "window_duration": "1h",
+            "max_signups_per_window": 2,
+            "block_duration": "1h",
+            "enable_notifications": true,
             "escalation_rules": [
                 {
                     "signup_count": 3,
