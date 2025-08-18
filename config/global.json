@@ -1,0 +1,36 @@
+{
+    "engine": {
+        "max_concurrent_requests": 1000,
+        "request_timeout": "30s",
+        "enable_metrics": true,
+        "enable_events": true,
+        "default_action": "allow",
+        "failure_mode": "allow",
+        "action_rules": [ ]
+    },
+    "store": {
+        "type": "memory",
+        "address": "",
+        "password": "",
+        "database": 0,
+        "prefix": "",
+        "max_retries": 3,
+        "timeout": "5s",
+        "options": null
+    },
+    "events": {
+        "buffer_size": 1000,
+        "worker_count": 4,
+        "enable_async": true,
+        "retry_attempts": 3
+    },
+    "logging": {
+        "level": "INFO",
+        "format": "json",
+        "output": "stdout",
+        "max_size": 100,
+        "max_backups": 3,
+        "max_age": 28,
+        "compress": true
+    }
+}

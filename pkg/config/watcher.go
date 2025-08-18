@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/oarkflow/log"
 )
 
@@ -169,7 +171,9 @@ func (cw *Watcher) ForceReload() error {
 type Manager struct {
 	currentConfig   *SystemConfig
 	watcher         *Watcher
+	multiWatcher    *MultiFileWatcher
 	configPath      string
+	configLoader    ConfigLoader
 	reloadCallbacks []ReloadCallback
 	mu              sync.RWMutex
 }
@@ -182,9 +186,27 @@ func NewManager(configPath string) *Manager {
 	}
 }
 
+// NewManagerWithLoader creates a new configuration manager with a specific loader
+func NewManagerWithLoader(loader ConfigLoader) *Manager {
+	return &Manager{
+		configLoader:    loader,
+		reloadCallbacks: make([]ReloadCallback, 0),
+	}
+}
+
 // LoadInitialConfig loads the initial configuration
 func (cm *Manager) LoadInitialConfig() error {
-	config, err := LoadConfig(cm.configPath)
+	var config *SystemConfig
+	var err error
+
+	if cm.configLoader != nil {
+		// Use the provided loader
+		config, err = cm.configLoader.LoadConfig("")
+	} else {
+		// Use traditional single file loading
+		config, err = LoadConfig(cm.configPath)
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to load initial config: %w", err)
 	}
@@ -218,12 +240,28 @@ func (cm *Manager) AddReloadCallback(callback ReloadCallback) {
 
 // StartWatching starts watching for configuration changes
 func (cm *Manager) StartWatching(ctx context.Context) error {
-	cm.watcher = NewConfigWatcher(cm.configPath, cm.handleConfigReload)
-	return cm.watcher.Start(ctx)
+	if cm.configLoader != nil {
+		// Use multi-file watcher for modular configs
+		if multiLoader, ok := cm.configLoader.(*MultiFileLoader); ok {
+			cm.multiWatcher = NewMultiFileWatcher(multiLoader.configDir, cm.handleConfigReload)
+			return cm.multiWatcher.StartWatching(ctx)
+		}
+	}
+
+	// Fall back to single file watcher
+	if cm.configPath != "" {
+		cm.watcher = NewConfigWatcher(cm.configPath, cm.handleConfigReload)
+		return cm.watcher.Start(ctx)
+	}
+
+	return nil
 }
 
 // StopWatching stops watching for configuration changes
 func (cm *Manager) StopWatching() {
+	if cm.multiWatcher != nil {
+		cm.multiWatcher.StopWatching()
+	}
 	if cm.watcher != nil {
 		cm.watcher.Stop()
 	}
@@ -409,4 +447,228 @@ func (cm *Manager) reloadConfigDirect() error {
 	}
 
 	return cm.handleConfigReload(newConfig)
+}
+
+// MultiFileWatcher watches multiple configuration files and directories
+type MultiFileWatcher struct {
+	configDir    string
+	watchers     map[string]*fsnotify.Watcher
+	callbacks    []ReloadCallback
+	eventChan    chan fsnotify.Event
+	stopChan     chan struct{}
+	configLoader *MultiFileLoader
+	mu           sync.RWMutex
+	running      bool
+}
+
+// NewMultiFileWatcher creates a new multi-file watcher
+func NewMultiFileWatcher(configDir string, callback ReloadCallback) *MultiFileWatcher {
+	return &MultiFileWatcher{
+		configDir:    configDir,
+		watchers:     make(map[string]*fsnotify.Watcher),
+		callbacks:    []ReloadCallback{callback},
+		eventChan:    make(chan fsnotify.Event, 100),
+		stopChan:     make(chan struct{}),
+		configLoader: NewMultiFileLoader(configDir),
+	}
+}
+
+// StartWatching starts watching all configuration files and directories
+func (mw *MultiFileWatcher) StartWatching(ctx context.Context) error {
+	mw.mu.Lock()
+	if mw.running {
+		mw.mu.Unlock()
+		return fmt.Errorf("multi-file watcher is already running")
+	}
+	mw.running = true
+	mw.mu.Unlock()
+
+	// Watch core config files
+	coreFiles := []string{"server.json", "global.json"}
+	for _, file := range coreFiles {
+		path := filepath.Join(mw.configDir, file)
+		if err := mw.watchFile(path); err != nil {
+			log.Warn().Str("file", path).Err(err).Msg("Failed to watch config file")
+		}
+	}
+
+	// Watch rule directories
+	ruleDirs := []string{"detectors", "actions", "handlers", "tcp-protection", "security"}
+	for _, dir := range ruleDirs {
+		dirPath := filepath.Join(mw.configDir, dir)
+		if err := mw.watchDirectory(dirPath); err != nil {
+			log.Warn().Str("dir", dirPath).Err(err).Msg("Failed to watch rule directory")
+		}
+	}
+
+	// Start event handling goroutine
+	go mw.handleEvents(ctx)
+
+	log.Info().Str("config_dir", mw.configDir).Msg("Multi-file config watcher started")
+	return nil
+}
+
+// StopWatching stops watching all files and directories
+func (mw *MultiFileWatcher) StopWatching() {
+	mw.mu.Lock()
+	defer mw.mu.Unlock()
+
+	if !mw.running {
+		return
+	}
+
+	mw.running = false
+	close(mw.stopChan)
+
+	// Close all watchers
+	for path, watcher := range mw.watchers {
+		if err := watcher.Close(); err != nil {
+			log.Warn().Str("path", path).Err(err).Msg("Failed to close watcher")
+		}
+	}
+
+	log.Info().Msg("Multi-file config watcher stopped")
+}
+
+// watchFile adds a file to be watched
+func (mw *MultiFileWatcher) watchFile(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		log.Debug().Str("file", path).Msg("Config file does not exist, skipping watch")
+		return nil
+	}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("failed to create watcher for %s: %w", path, err)
+	}
+
+	if err := watcher.Add(path); err != nil {
+		watcher.Close()
+		return fmt.Errorf("failed to add file %s to watcher: %w", path, err)
+	}
+
+	mw.watchers[path] = watcher
+
+	// Forward events to main event channel
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				mw.eventChan <- event
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Error().Str("file", path).Err(err).Msg("File watcher error")
+			case <-mw.stopChan:
+				return
+			}
+		}
+	}()
+
+	log.Debug().Str("file", path).Msg("Started watching config file")
+	return nil
+}
+
+// watchDirectory adds a directory to be watched
+func (mw *MultiFileWatcher) watchDirectory(dirPath string) error {
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		log.Debug().Str("dir", dirPath).Msg("Config directory does not exist, skipping watch")
+		return nil
+	}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("failed to create watcher for %s: %w", dirPath, err)
+	}
+
+	if err := watcher.Add(dirPath); err != nil {
+		watcher.Close()
+		return fmt.Errorf("failed to add directory %s to watcher: %w", dirPath, err)
+	}
+
+	mw.watchers[dirPath] = watcher
+
+	// Forward events to main event channel
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				mw.eventChan <- event
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Error().Str("dir", dirPath).Err(err).Msg("Directory watcher error")
+			case <-mw.stopChan:
+				return
+			}
+		}
+	}()
+
+	log.Debug().Str("dir", dirPath).Msg("Started watching config directory")
+	return nil
+}
+
+// handleEvents processes file system events
+func (mw *MultiFileWatcher) handleEvents(ctx context.Context) {
+	debounceTimer := time.NewTimer(0)
+	debounceTimer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-mw.stopChan:
+			return
+		case event := <-mw.eventChan:
+			if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
+				log.Debug().Str("file", event.Name).Str("op", event.Op.String()).Msg("Config file changed")
+
+				// Debounce rapid file changes
+				debounceTimer.Reset(500 * time.Millisecond)
+			}
+		case <-debounceTimer.C:
+			mw.reloadConfiguration()
+		}
+	}
+}
+
+// reloadConfiguration reloads the entire configuration
+func (mw *MultiFileWatcher) reloadConfiguration() {
+	log.Info().Msg("Reloading modular configuration...")
+
+	// Load new configuration
+	newConfig, err := mw.configLoader.LoadConfig("")
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to reload modular configuration")
+		return
+	}
+
+	// Notify all callbacks
+	mw.mu.RLock()
+	callbacks := make([]ReloadCallback, len(mw.callbacks))
+	copy(callbacks, mw.callbacks)
+	mw.mu.RUnlock()
+
+	for _, callback := range callbacks {
+		if err := callback(newConfig); err != nil {
+			log.Error().Err(err).Msg("Config reload callback failed")
+		}
+	}
+
+	log.Info().Msg("Modular configuration reloaded successfully")
+}
+
+// AddCallback adds a reload callback
+func (mw *MultiFileWatcher) AddCallback(callback ReloadCallback) {
+	mw.mu.Lock()
+	defer mw.mu.Unlock()
+	mw.callbacks = append(mw.callbacks, callback)
 }

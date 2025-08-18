@@ -1,0 +1,16 @@
+{
+    "action": {
+        "name": "captcha_action",
+        "enabled": true,
+        "priority": 75,
+        "parameters": {
+            "provider": "simple",
+            "site_key": "",
+            "secret_key": "",
+            "threshold": 0.5,
+            "duration": "10m",
+            "max_attempts": 3,
+            "difficulty": "medium"
+        }
+    }
+}

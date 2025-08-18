@@ -1,0 +1,17 @@
+{
+    "handler": {
+        "name": "security_logger_handler",
+        "enabled": true,
+        "priority": 100,
+        "parameters": {
+            "log_file": "security_events.log",
+            "log_level": "INFO",
+            "event_types": [ "*" ],
+            "format": "json",
+            "max_file_size": "100MB",
+            "max_backups": 5,
+            "compress": true,
+            "include_request_details": true
+        }
+    }
+}

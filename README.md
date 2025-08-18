@@ -86,7 +86,41 @@ This will demonstrate:
 
 ### Configuration
 
-The system uses a comprehensive JSON configuration:
+The system supports both **modular** and **single-file** configuration formats:
+
+#### Modular Configuration (Recommended)
+
+Organize your configuration into separate files for better maintainability:
+
+```
+config/
+├── server.json                    # Server configuration
+├── global.json                    # Global system settings
+├── detectors/                     # Detection rules
+│   ├── sql-injection-rules.json
+│   ├── rate-limit-rules.json
+│   └── xss-rules.json
+├── actions/                       # Action rules
+│   ├── block-action-rules.json
+│   └── captcha-action-rules.json
+├── handlers/                      # Event handlers
+│   └── security-logger-rules.json
+├── tcp-protection/               # TCP protection
+│   └── tcp-config.json
+└── security/                     # Security policies
+    └── security-config.json
+```
+
+**Benefits:**
+- 🔧 **Maintainable**: Each file focuses on one aspect
+- 🚀 **Hot Reload**: Independent file watching and reloading
+- 👥 **Team-Friendly**: Multiple developers can work on different rule sets
+- 🔍 **Better Diffs**: Version control shows precise changes
+- 📦 **Selective Deployment**: Deploy only changed configurations
+
+#### Single-File Configuration (Legacy)
+
+Traditional single-file configuration is still supported for backward compatibility:
 
 ```json
 {
@@ -99,14 +133,6 @@ The system uses a comprehensive JSON configuration:
     "max_concurrent_requests": 1000,
     "request_timeout": "30s",
     "enable_events": true
-  },
-  "store": {
-    "type": "memory",
-    "timeout": "5s"
-  },
-  "events": {
-    "buffer_size": 1000,
-    "worker_count": 4
   },
   "plugins": {
     "detectors": {
@@ -121,6 +147,35 @@ The system uses a comprehensive JSON configuration:
   }
 }
 ```
+
+#### Migration Tool
+
+Convert existing single-file configurations to modular format:
+
+```bash
+# Build migration tool
+go build -o migrate ./cmd/migrate
+
+# Migrate configuration with validation
+./migrate -source system_config.json -target config -validate
+
+# View help
+./migrate -help
+```
+
+#### Auto-Detection
+
+The application automatically detects your configuration format:
+
+```bash
+# Uses modular config if config/ directory exists
+./guard -config config
+
+# Uses single-file config (backward compatibility)
+./guard -config system_config.json
+```
+
+For detailed information, see [Modular Configuration System Documentation](docs/MODULAR_CONFIG_SYSTEM.md).
 
 ## 🔧 Plugin Development
 

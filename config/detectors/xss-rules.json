@@ -1,0 +1,36 @@
+{
+    "detector": {
+        "name": "xss_detector",
+        "enabled": true,
+        "priority": 95,
+        "parameters": {
+            "patterns": [
+                "(?i)<\\s*script[^>]*>",
+                "(?i)javascript\\s*:",
+                "(?i)on\\w+\\s*=",
+                "(?i)<\\s*iframe[^>]*>",
+                "(?i)<\\s*object[^>]*>",
+                "(?i)<\\s*embed[^>]*>",
+                "(?i)eval\\s*\\(",
+                "(?i)alert\\s*\\(",
+                "(?i)confirm\\s*\\(",
+                "(?i)prompt\\s*\\("
+            ],
+            "check_all_params": true,
+            "decode_url": true,
+            "decode_html": true
+        }
+    },
+    "action_rules": [
+        {
+            "name": "XSS Attack Block",
+            "description": "Block XSS attacks with medium confidence",
+            "min_severity": 1,
+            "min_confidence": 0.6,
+            "actions": [ "block_action" ],
+            "threat_tags": [ "xss" ],
+            "priority": 94,
+            "enabled": true
+        }
+    ]
+}

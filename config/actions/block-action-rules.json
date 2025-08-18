@@ -1,0 +1,40 @@
+{
+    "action": {
+        "name": "block_action",
+        "enabled": true,
+        "priority": 100,
+        "parameters": {
+            "default_duration": "5m",
+            "max_duration": "24h",
+            "block_message": "Access denied due to security policy violation",
+            "log_blocks": true,
+            "escalation_rules": [
+                {
+                    "violation_count": 1,
+                    "duration": "5m",
+                    "permanent": false
+                },
+                {
+                    "violation_count": 3,
+                    "duration": "30m",
+                    "permanent": false
+                },
+                {
+                    "violation_count": 5,
+                    "duration": "2h",
+                    "permanent": false
+                },
+                {
+                    "violation_count": 10,
+                    "duration": "24h",
+                    "permanent": false
+                },
+                {
+                    "violation_count": 20,
+                    "duration": "0",
+                    "permanent": true
+                }
+            ]
+        }
+    }
+}

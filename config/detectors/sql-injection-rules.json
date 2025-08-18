@@ -1,0 +1,34 @@
+{
+    "detector": {
+        "name": "sql_injection_detector",
+        "enabled": true,
+        "priority": 100,
+        "parameters": {
+            "custom_patterns": [
+                "(?i)(union|select|insert|update|delete|drop|create|alter)\\s+",
+                "(?i)'\\s*(or|and)\\s*'",
+                "(?i)\\b(exec|execute|sp_|xp_)\\w*\\s*\\(",
+                "(?i)--\\s*$",
+                "(?i)/\\*.*\\*/",
+                "(?i)\\b(script|javascript|vbscript)\\s*:",
+                "(?i)<\\s*script[^>]*>.*?</\\s*script\\s*>"
+            ],
+            "check_headers": true,
+            "check_query_params": true,
+            "check_body": true,
+            "max_body_size": 1048576
+        }
+    },
+    "action_rules": [
+        {
+            "name": "SQL Injection Block",
+            "description": "Block SQL injection attempts immediately",
+            "min_severity": 1,
+            "min_confidence": 0.7,
+            "actions": [ "block_action" ],
+            "threat_tags": [ "sql_injection" ],
+            "priority": 95,
+            "enabled": true
+        }
+    ]
+}

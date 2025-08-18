@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -60,21 +61,39 @@ func WithDdosMiddleware(enable bool) Options {
 }
 
 // NewApplication creates a new application instance
-func NewApplication(configFile string, opts ...Options) (*Application, error) {
-	// Create config manager
-	configManager := config.NewManager(configFile)
+func NewApplication(configSource string, opts ...Options) (*Application, error) {
+	// Detect configuration source and create appropriate loader
+	detector := config.NewConfigSourceDetector(filepath.Dir(configSource))
+	loader, err := detector.DetectConfigSource()
+	if err != nil {
+		return nil, fmt.Errorf("failed to detect config source: %w", err)
+	}
+
+	log.Info().Str("loader_type", loader.GetSourceType()).Msg("Using configuration loader")
+
+	// Create config manager with detected loader
+	var configManager *config.Manager
+	if loader.GetSourceType() == "single-file" {
+		configManager = config.NewManager(configSource)
+	} else {
+		configManager = config.NewManagerWithLoader(loader)
+	}
 
 	// Load initial configuration
 	if err := configManager.LoadInitialConfig(); err != nil {
-		// Create default config if file doesn't exist
-		cfg := config.CreateDefaultConfig()
-		if err := config.SaveConfig(cfg, configFile); err != nil {
-			log.Warn().Err(err).Msg("Could not save default config")
-		}
-		log.Info().Str("config_file", configFile).Msg("Created default configuration file")
+		// For single-file configs, try to create default if file doesn't exist
+		if loader.GetSourceType() == "single-file" {
+			cfg := config.CreateDefaultConfig()
+			if err := config.SaveConfig(cfg, configSource); err != nil {
+				log.Warn().Err(err).Msg("Could not save default config")
+			}
+			log.Info().Str("config_file", configSource).Msg("Created default configuration file")
 
-		// Reload the config manager with the new file
-		if err := configManager.LoadInitialConfig(); err != nil {
+			// Reload the config manager with the new file
+			if err := configManager.LoadInitialConfig(); err != nil {
+				return nil, fmt.Errorf("failed to load initial config: %w", err)
+			}
+		} else {
 			return nil, fmt.Errorf("failed to load initial config: %w", err)
 		}
 	}

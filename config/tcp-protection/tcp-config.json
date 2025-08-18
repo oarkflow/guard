@@ -1,0 +1,22 @@
+{
+    "tcp_protection": {
+        "enable_tcp_protection": true,
+        "connection_rate_limit": 100,
+        "connection_window": "60s",
+        "silent_drop_threshold": 50,
+        "tarpit_threshold": 75,
+        "tarpit_delay": "5s",
+        "max_tarpit_connections": 10,
+        "brute_force_threshold": 10,
+        "brute_force_window": "300s",
+        "cleanup_interval": "60s",
+        "whitelisted_ips": [
+            "127.0.0.1",
+            "::1",
+            "10.0.0.0/8",
+            "172.16.0.0/12",
+            "192.168.0.0/16"
+        ],
+        "blacklisted_ips": [ ]
+    }
+}
