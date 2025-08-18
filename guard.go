@@ -292,6 +292,23 @@ func (app *Application) registerBuiltinPlugins() error {
 		return fmt.Errorf("failed to register brute force detector: %w", err)
 	}
 
+	// Register the generic configurable detector
+	genericDetector := detectors.NewGenericDetector()
+	if err := app.registry.RegisterDetector(
+		genericDetector,
+		plugins.PluginMetadata{
+			Name:        genericDetector.Name(),
+			Version:     genericDetector.Version(),
+			Description: genericDetector.Description(),
+			Type:        "detector",
+			Author:      "System",
+		},
+		cfg.Plugins.Detectors["generic_detector"],
+	); err != nil {
+		// Log the error but don't fail the initialization
+		log.Warn().Err(err).Msg("Failed to register generic detector, continuing without it")
+	}
+
 	suspiciousUADetector := detectors.NewSuspiciousUserAgentDetector()
 	if err := app.registry.RegisterDetector(
 		suspiciousUADetector,
