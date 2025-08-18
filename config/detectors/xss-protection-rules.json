@@ -1,0 +1,147 @@
+{
+    "detector": {
+        "name": "generic_detector",
+        "enabled": true,
+        "priority": 50,
+        "parameters": {
+            "rules": [
+                {
+                    "id": "xss_script_tag",
+                    "name": "XSS - Script Tag",
+                    "description": "Detects XSS attempts using script tags",
+                    "enabled": true,
+                    "type": "pattern",
+                    "severity": 8,
+                    "confidence": 0.8,
+                    "priority": 95,
+                    "conditions": [
+                        {
+                            "field": "path",
+                            "operator": "regex",
+                            "value": "(?i)<\\s*script[^>]*>"
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "xss", "web_attack", "injection", "script_injection" ]
+                },
+                {
+                    "id": "xss_javascript_protocol",
+                    "name": "XSS - JavaScript Protocol",
+                    "description": "Detects XSS attempts using javascript: protocol",
+                    "enabled": true,
+                    "type": "pattern",
+                    "severity": 7,
+                    "confidence": 0.8,
+                    "priority": 90,
+                    "conditions": [
+                        {
+                            "field": "path",
+                            "operator": "regex",
+                            "value": "(?i)javascript\\s*:"
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "xss", "web_attack", "injection", "javascript_protocol" ]
+                },
+                {
+                    "id": "xss_event_handlers",
+                    "name": "XSS - Event Handlers",
+                    "description": "Detects XSS attempts using HTML event handlers",
+                    "enabled": true,
+                    "type": "pattern",
+                    "severity": 7,
+                    "confidence": 0.7,
+                    "priority": 85,
+                    "conditions": [
+                        {
+                            "field": "path",
+                            "operator": "regex",
+                            "value": "(?i)on\\w+\\s*="
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "xss", "web_attack", "injection", "event_handler" ]
+                },
+                {
+                    "id": "xss_dangerous_tags",
+                    "name": "XSS - Dangerous Tags",
+                    "description": "Detects XSS attempts using dangerous HTML tags",
+                    "enabled": true,
+                    "type": "pattern",
+                    "severity": 7,
+                    "confidence": 0.8,
+                    "priority": 88,
+                    "conditions": [
+                        {
+                            "field": "path",
+                            "operator": "regex",
+                            "value": "(?i)<\\s*(iframe|object|embed)[^>]*>"
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "xss", "web_attack", "injection", "dangerous_tags" ]
+                },
+                {
+                    "id": "xss_javascript_functions",
+                    "name": "XSS - JavaScript Functions",
+                    "description": "Detects XSS attempts using dangerous JavaScript functions",
+                    "enabled": true,
+                    "type": "pattern",
+                    "severity": 6,
+                    "confidence": 0.7,
+                    "priority": 80,
+                    "conditions": [
+                        {
+                            "field": "path",
+                            "operator": "regex",
+                            "value": "(?i)(eval|alert|confirm|prompt)\\s*\\("
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "xss", "web_attack", "injection", "javascript_functions" ]
+                },
+                {
+                    "id": "body_xss_detection",
+                    "name": "Body XSS Detection",
+                    "description": "Detects XSS patterns in request body content",
+                    "enabled": true,
+                    "type": "pattern",
+                    "severity": 8,
+                    "confidence": 0.85,
+                    "priority": 95,
+                    "conditions": [
+                        {
+                            "field": "body",
+                            "operator": "regex",
+                            "value": "(?i)<script[^>]*>.*?</script>|javascript:|on\\w+\\s*=|<\\s*(iframe|object|embed)[^>]*>"
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "xss", "body", "web_attack", "injection", "script_injection" ]
+                }
+            ]
+        }
+    },
+    "action_rules": [
+        {
+            "name": "XSS Attack Block",
+            "description": "Block XSS attacks",
+            "min_severity": 6,
+            "min_confidence": 0.7,
+            "actions": [ "block_action" ],
+            "threat_tags": [ "xss" ],
+            "priority": 90,
+            "enabled": true
+        },
+        {
+            "name": "Script Injection Block",
+            "description": "Block script injection attempts",
+            "min_severity": 7,
+            "min_confidence": 0.8,
+            "actions": [ "block_action" ],
+            "threat_tags": [ "script_injection" ],
+            "priority": 95,
+            "enabled": true
+        }
+    ]
+}

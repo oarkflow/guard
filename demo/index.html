@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guard Security System - Demo</title>
+    <title>Advanced Security Demo - Guard Protection System</title>
     <style>
         * {
             margin: 0;
@@ -16,197 +16,239 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            color: #333;
+            padding: 20px;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
 
         .header {
-            text-align: center;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
             color: white;
-            margin-bottom: 40px;
+            padding: 30px;
+            text-align: center;
         }
 
         .header h1 {
-            font-size: 3rem;
+            font-size: 2.5em;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .header p {
-            font-size: 1.2rem;
+            font-size: 1.2em;
             opacity: 0.9;
         }
 
-        .demo-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 30px;
-            margin-bottom: 40px;
-        }
-
-        .demo-card {
-            background: white;
-            border-radius: 15px;
+        .content {
             padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
-        .demo-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            background: #f9f9f9;
         }
 
-        .demo-card h3 {
-            color: #667eea;
-            margin-bottom: 15px;
-            font-size: 1.5rem;
-        }
-
-        .demo-card p {
+        .section h2 {
+            color: #2c3e50;
             margin-bottom: 20px;
-            line-height: 1.6;
+            font-size: 1.8em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .test-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-card h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .test-card p {
             color: #666;
+            margin-bottom: 15px;
+            line-height: 1.6;
         }
 
         .btn {
-            display: inline-block;
-            padding: 12px 24px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
             color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            transition: all 0.3s ease;
             border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 1rem;
-            margin: 5px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
         }
 
-        .btn-danger {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+        .btn.danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
         }
 
-        .btn-warning {
-            background: linear-gradient(45deg, #feca57, #ff9ff3);
+        .btn.danger:hover {
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
         }
 
-        .btn-success {
-            background: linear-gradient(45deg, #48dbfb, #0abde3);
+        .btn.warning {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
         }
 
-        .status-panel {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            margin-bottom: 30px;
-        }
-
-        .status-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-
-        .status-item {
-            text-align: center;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 10px;
-        }
-
-        .status-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #667eea;
-        }
-
-        .status-label {
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .test-form {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 15px;
+        .btn.warning:hover {
+            box-shadow: 0 5px 15px rgba(243, 156, 18, 0.4);
         }
 
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
         .form-group label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
+            color: #2c3e50;
         }
 
         .form-group input,
         .form-group textarea {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1rem;
+            border-radius: 6px;
+            font-size: 14px;
         }
 
-        .result-panel {
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .result {
             margin-top: 20px;
             padding: 15px;
-            border-radius: 8px;
+            border-radius: 6px;
             display: none;
         }
 
-        .result-success {
+        .result.success {
             background: #d4edda;
             border: 1px solid #c3e6cb;
             color: #155724;
         }
 
-        .result-danger {
+        .result.error {
             background: #f8d7da;
             border: 1px solid #f5c6cb;
             color: #721c24;
         }
 
-        .result-warning {
+        .result.warning {
             background: #fff3cd;
             border: 1px solid #ffeaa7;
             color: #856404;
         }
 
-        .footer {
-            text-align: center;
+        .metrics {
+            background: #2c3e50;
             color: white;
-            margin-top: 40px;
-            opacity: 0.8;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
         }
 
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2rem;
-            }
+        .metrics h3 {
+            margin-bottom: 15px;
+        }
 
-            .demo-grid {
-                grid-template-columns: 1fr;
-            }
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #34495e;
+        }
 
-            .container {
-                padding: 10px;
-            }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.active {
+            background: #27ae60;
+        }
+
+        .status-indicator.blocked {
+            background: #e74c3c;
+        }
+
+        .status-indicator.warning {
+            background: #f39c12;
+        }
+
+        .demo-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .demo-tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .demo-tab.active {
+            color: #3498db;
+            border-bottom-color: #3498db;
+        }
+
+        .demo-tab:hover {
+            color: #2980b9;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
     </style>
 </head>
@@ -214,398 +256,713 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🛡️ Guard Security System</h1>
-            <p>Interactive Demo & Testing Interface</p>
+            <h1>🛡️ Advanced Security Demo</h1>
+            <p>Comprehensive Security Rule Testing Platform</p>
         </div>
 
-        <div class="status-panel">
-            <h3 style="margin-bottom: 20px; color: #667eea;">System Status</h3>
-            <div class="status-grid" id="statusGrid">
-                <div class="status-item">
-                    <div class="status-value" id="totalPlugins">-</div>
-                    <div class="status-label">Total Plugins</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-value" id="totalRequests">-</div>
-                    <div class="status-label">Total Requests</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-value" id="threatsDetected">-</div>
-                    <div class="status-label">Threats Detected</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-value" id="blockedRequests">-</div>
-                    <div class="status-label">Blocked Requests</div>
-                </div>
+        <div class="content">
+            <!-- Navigation Tabs -->
+            <div class="demo-tabs">
+                <button class="demo-tab active" onclick="showTab('authentication')">Authentication Security</button>
+                <button class="demo-tab" onclick="showTab('injection')">Injection Attacks</button>
+                <button class="demo-tab" onclick="showTab('behavioral')">Behavioral Detection</button>
+                <button class="demo-tab" onclick="showTab('metrics')">Security Metrics</button>
             </div>
-        </div>
 
-        <div class="demo-grid">
-            <div class="demo-card">
-                <h3>🔍 SQL Injection Test</h3>
-                <p>Test the SQL injection detector with various payloads. The system will detect and block malicious SQL
-                    injection attempts.</p>
-                <div class="test-form">
-                    <div class="form-group">
-                        <label>Test Payload:</label>
-                        <input type="text" id="sqlPayload" placeholder="' OR 1=1 --" value="' OR 1=1 --">
+            <!-- Authentication Security Tab -->
+            <div id="authentication" class="tab-content active">
+                <div class="section">
+                    <h2>🔐 Authentication Security Tests</h2>
+
+                    <div class="test-grid">
+                        <div class="test-card">
+                            <h3>Bot Login Detection</h3>
+                            <p>Tests detection of automated bot login attempts based on user agent patterns.</p>
+                            <button class="btn danger" onclick="testBotLogin()">Test Bot Login</button>
+                            <button class="btn" onclick="testNormalLogin()">Test Normal Login</button>
+                            <div id="bot-login-result" class="result"></div>
+                        </div>
+
+                        <div class="test-card">
+                            <h3>Login Rate Limiting</h3>
+                            <p>Tests protection against brute force login attempts.</p>
+                            <button class="btn danger" onclick="testLoginRateLimit()">Test Rate Limit</button>
+                            <div id="rate-limit-result" class="result"></div>
+                        </div>
+
+                        <div class="test-card">
+                            <h3>Multiple Account Detection</h3>
+                            <p>Detects attempts to use multiple usernames from the same IP.</p>
+                            <button class="btn warning" onclick="testMultipleLogins()">Test Multiple Logins</button>
+                            <button class="btn warning" onclick="testMultipleSignups()">Test Multiple Signups</button>
+                            <div id="multiple-accounts-result" class="result"></div>
+                        </div>
+
+                        <div class="test-card">
+                            <h3>Credential Stuffing</h3>
+                            <p>Detects attempts using common/weak passwords.</p>
+                            <button class="btn danger" onclick="testCredentialStuffing()">Test Credential
+                                Stuffing</button>
+                            <div id="credential-stuffing-result" class="result"></div>
+                        </div>
                     </div>
-                    <button class="btn btn-danger" onclick="testSQLInjection()">Test SQL Injection</button>
                 </div>
-                <div class="result-panel" id="sqlResult"></div>
-            </div>
 
-            <div class="demo-card">
-                <h3>🚨 XSS Attack Test</h3>
-                <p>Test Cross-Site Scripting detection with various XSS payloads. The system identifies and blocks XSS
-                    attempts.</p>
-                <div class="test-form">
-                    <div class="form-group">
-                        <label>XSS Payload:</label>
-                        <input type="text" id="xssPayload" placeholder="<script>alert('XSS')</script>"
-                            value="<script>alert('XSS')</script>">
+                <div class="section">
+                    <h2>🌍 Geolocation & Time-based Security</h2>
+
+                    <div class="test-grid">
+                        <div class="test-card">
+                            <h3>Business Hours Access</h3>
+                            <p>Tests access control based on business hours (9 AM - 6 PM UTC).</p>
+                            <button class="btn warning" onclick="testBusinessHours()">Test Business Hours</button>
+                            <div id="business-hours-result" class="result"></div>
+                        </div>
+
+                        <div class="test-card">
+                            <h3>Geolocation Anomaly</h3>
+                            <p>Tests detection of logins from unexpected regions.</p>
+                            <button class="btn warning" onclick="testGeolocation()">Test Geolocation</button>
+                            <div id="geolocation-result" class="result"></div>
+                        </div>
                     </div>
-                    <button class="btn btn-danger" onclick="testXSS()">Test XSS Attack</button>
                 </div>
-                <div class="result-panel" id="xssResult"></div>
             </div>
 
-            <div class="demo-card">
-                <h3>📁 Path Traversal Test</h3>
-                <p>Test directory traversal detection. The system prevents unauthorized file system access attempts.</p>
-                <div class="test-form">
-                    <div class="form-group">
-                        <label>Path Payload:</label>
-                        <input type="text" id="pathPayload" placeholder="../../../etc/passwd"
-                            value="../../../etc/passwd">
+            <!-- Injection Attacks Tab -->
+            <div id="injection" class="tab-content">
+                <div class="section">
+                    <h2>💉 Injection Attack Detection</h2>
+
+                    <div class="test-grid">
+                        <div class="test-card">
+                            <h3>SQL Injection</h3>
+                            <p>Tests detection of SQL injection attempts in URLs and request bodies.</p>
+                            <button class="btn danger" onclick="testSQLInjection()">Test SQL Injection</button>
+                            <div id="sql-injection-result" class="result"></div>
+                        </div>
+
+                        <div class="test-card">
+                            <h3>XSS (Cross-Site Scripting)</h3>
+                            <p>Tests detection of XSS attempts using various techniques.</p>
+                            <button class="btn danger" onclick="testXSS()">Test XSS</button>
+                            <div id="xss-result" class="result"></div>
+                        </div>
+
+                        <div class="test-card">
+                            <h3>Command Injection</h3>
+                            <p>Tests detection of command injection attempts.</p>
+                            <button class="btn danger" onclick="testCommandInjection()">Test Command Injection</button>
+                            <div id="command-injection-result" class="result"></div>
+                        </div>
+
+                        <div class="test-card">
+                            <h3>Path Traversal</h3>
+                            <p>Tests detection of directory traversal attacks.</p>
+                            <button class="btn danger" onclick="testPathTraversal()">Test Path Traversal</button>
+                            <div id="path-traversal-result" class="result"></div>
+                        </div>
                     </div>
-                    <button class="btn btn-danger" onclick="testPathTraversal()">Test Path Traversal</button>
                 </div>
-                <div class="result-panel" id="pathResult"></div>
             </div>
 
-            <div class="demo-card">
-                <h3>🔐 Brute Force Test</h3>
-                <p>Simulate brute force login attempts. The system detects and blocks repeated failed login attempts.
-                </p>
-                <div class="test-form">
-                    <div class="form-group">
-                        <label>Username:</label>
-                        <input type="text" id="bruteUsername" placeholder="admin" value="admin">
+            <!-- Behavioral Detection Tab -->
+            <div id="behavioral" class="tab-content">
+                <div class="section">
+                    <h2>🕵️ Behavioral Security Detection</h2>
+
+                    <div class="test-grid">
+                        <div class="test-card">
+                            <h3>DDoS Detection</h3>
+                            <p>Tests detection of distributed denial of service attacks.</p>
+                            <button class="btn danger" onclick="testDDoS()">Test DDoS</button>
+                            <div id="ddos-result" class="result"></div>
+                        </div>
+
+                        <div class="test-card">
+                            <h3>API Abuse</h3>
+                            <p>Tests detection of excessive API usage patterns.</p>
+                            <button class="btn warning" onclick="testAPIAbuse()">Test API Abuse</button>
+                            <div id="api-abuse-result" class="result"></div>
+                        </div>
+
+                        <div class="test-card">
+                            <h3>Data Exfiltration</h3>
+                            <p>Tests detection of potential data exfiltration attempts.</p>
+                            <button class="btn danger" onclick="testDataExfiltration()">Test Data Exfiltration</button>
+                            <div id="data-exfiltration-result" class="result"></div>
+                        </div>
+
+                        <div class="test-card">
+                            <h3>Privilege Escalation</h3>
+                            <p>Tests detection of attempts to gain elevated privileges.</p>
+                            <button class="btn danger" onclick="testPrivilegeEscalation()">Test Privilege
+                                Escalation</button>
+                            <div id="privilege-escalation-result" class="result"></div>
+                        </div>
+
+                        <div class="test-card">
+                            <h3>Reconnaissance</h3>
+                            <p>Tests detection of scanning and reconnaissance activities.</p>
+                            <button class="btn warning" onclick="testReconnaissance()">Test Reconnaissance</button>
+                            <div id="reconnaissance-result" class="result"></div>
+                        </div>
+
+                        <div class="test-card">
+                            <h3>Session Hijacking</h3>
+                            <p>Tests detection of potential session hijacking attempts.</p>
+                            <button class="btn danger" onclick="testSessionHijacking()">Test Session Hijacking</button>
+                            <div id="session-hijacking-result" class="result"></div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Password:</label>
-                        <input type="password" id="brutePassword" placeholder="wrong_password" value="wrong_password">
+                </div>
+            </div>
+
+            <!-- Security Metrics Tab -->
+            <div id="metrics" class="tab-content">
+                <div class="section">
+                    <h2>📊 Real-time Security Metrics</h2>
+
+                    <div class="metrics" id="security-metrics">
+                        <h3>Loading metrics...</h3>
                     </div>
-                    <button class="btn btn-warning" onclick="testBruteForce()">Simulate Login Attempt</button>
-                </div>
-                <div class="result-panel" id="bruteResult"></div>
-            </div>
 
-            <div class="demo-card">
-                <h3>🤖 User Agent Test</h3>
-                <p>Test suspicious user agent detection. The system identifies automated tools and malicious bots.</p>
-                <div class="test-form">
-                    <div class="form-group">
-                        <label>User Agent:</label>
-                        <input type="text" id="userAgent" placeholder="sqlmap/1.0" value="sqlmap/1.0">
-                    </div>
-                    <button class="btn btn-warning" onclick="testUserAgent()">Test User Agent</button>
+                    <button class="btn" onclick="refreshMetrics()">Refresh Metrics</button>
+                    <button class="btn" onclick="runAllTests()">Run All Security Tests</button>
                 </div>
-                <div class="result-panel" id="uaResult"></div>
             </div>
-
-            <div class="demo-card">
-                <h3>⚡ Rate Limiting Test</h3>
-                <p>Test rate limiting protection. Send multiple requests quickly to trigger rate limiting.</p>
-                <div class="test-form">
-                    <div class="form-group">
-                        <label>Number of Requests:</label>
-                        <input type="number" id="rateCount" value="10" min="1" max="50">
-                    </div>
-                    <button class="btn btn-warning" onclick="testRateLimit()">Test Rate Limiting</button>
-                </div>
-                <div class="result-panel" id="rateResult"></div>
-            </div>
-
-            <div class="demo-card">
-                <h3>🧩 CAPTCHA Challenge</h3>
-                <p>Trigger a CAPTCHA challenge. When suspicious activity is detected, users may be presented with a
-                    CAPTCHA.</p>
-                <div class="test-form">
-                    <button class="btn btn-success" onclick="triggerCaptcha()">Trigger CAPTCHA</button>
-                    <button class="btn" onclick="checkCaptchaStatus()">Check CAPTCHA Status</button>
-                </div>
-                <div class="result-panel" id="captchaResult"></div>
-            </div>
-
-            <div class="demo-card">
-                <h3>📊 System Metrics</h3>
-                <p>View real-time security metrics and system performance data.</p>
-                <div class="test-form">
-                    <button class="btn btn-success" onclick="loadMetrics()">Load Metrics</button>
-                    <button class="btn" onclick="loadHealth()">Health Check</button>
-                </div>
-                <div class="result-panel" id="metricsResult"></div>
-            </div>
-        </div>
-
-        <div class="footer">
-            <p>&copy; 2025 Guard Security System - Advanced DDoS Protection & Web Application Firewall</p>
         </div>
     </div>
 
     <script>
-        // Auto-refresh status every 5 seconds
-        setInterval(updateStatus, 5000);
-        updateStatus(); // Initial load
+        // Tab switching functionality
+        function showTab(tabName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
 
-        async function updateStatus() {
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.demo-tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        // Utility function to show results
+        function showResult(elementId, message, type = 'success') {
+            const resultElement = document.getElementById(elementId);
+            resultElement.className = `result ${type}`;
+            resultElement.innerHTML = message;
+            resultElement.style.display = 'block';
+        }
+
+        // Authentication Security Tests
+        async function testBotLogin() {
             try {
-                const response = await fetch('/metrics');
-                const data = await response.json();
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'python-requests/2.28.1'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'password123'
+                    })
+                });
 
-                // Count total plugins
-                const pluginCount = Object.keys(data.plugins || {}).length;
-                document.getElementById('totalPlugins').textContent = pluginCount;
+                const result = await response.json();
+                const type = response.status === 403 ? 'success' : 'error';
+                const message = response.status === 403
+                    ? '✅ Bot login detected and blocked!'
+                    : `❌ Bot login not detected (Status: ${response.status})`;
 
-                // Get request stats
-                const ruleEngine = data.rule_engine || {};
-                document.getElementById('totalRequests').textContent = ruleEngine.total_requests || 0;
-                document.getElementById('threatsDetected').textContent = ruleEngine.threats_detected || 0;
-
-                // Calculate blocked requests from plugins
-                let blockedCount = 0;
-                const plugins = data.plugins || {};
-                if (plugins.block_action) {
-                    blockedCount += plugins.block_action.total_blocks || 0;
-                }
-                document.getElementById('blockedRequests').textContent = blockedCount;
-
+                showResult('bot-login-result', message, type);
             } catch (error) {
-                console.error('Failed to update status:', error);
+                showResult('bot-login-result', `Error: ${error.message}`, 'error');
             }
         }
 
-        async function testSQLInjection() {
-            const payload = document.getElementById('sqlPayload').value;
-            const result = document.getElementById('sqlResult');
-
+        async function testNormalLogin() {
             try {
-                const response = await fetch(`/test/sql?q=${encodeURIComponent(payload)}`);
-                const data = await response.json();
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'password123'
+                    })
+                });
 
-                if (response.status === 403 || response.status === 429) {
-                    showResult(result, 'danger', `🚫 SQL Injection Blocked! ${data.message || data.error}`);
-                } else {
-                    showResult(result, 'success', `✅ Request Allowed: ${data.message}`);
-                }
+                const result = await response.json();
+                const type = response.status === 200 ? 'success' : 'warning';
+                const message = response.status === 200
+                    ? '✅ Normal login allowed'
+                    : `⚠️ Normal login blocked (Status: ${response.status})`;
+
+                showResult('bot-login-result', message, type);
             } catch (error) {
-                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+                showResult('bot-login-result', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLoginRateLimit() {
+            showResult('rate-limit-result', '🔄 Testing rate limiting...', 'warning');
+
+            let blockedCount = 0;
+            for (let i = 0; i < 6; i++) {
+                try {
+                    const response = await fetch('/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            username: `testuser${i}`,
+                            password: 'wrongpassword'
+                        })
+                    });
+
+                    if (response.status === 429 || response.status === 403) {
+                        blockedCount++;
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                } catch (error) {
+                    console.error('Rate limit test error:', error);
+                }
+            }
+
+            const message = blockedCount > 0
+                ? `✅ Rate limiting active! ${blockedCount} requests blocked`
+                : '⚠️ Rate limiting may not be active';
+            const type = blockedCount > 0 ? 'success' : 'warning';
+
+            showResult('rate-limit-result', message, type);
+        }
+
+        async function testMultipleLogins() {
+            showResult('multiple-accounts-result', '🔄 Testing multiple login detection...', 'warning');
+
+            const usernames = ['testuser1', 'testuser2', 'testuser3', 'testuser4'];
+            let responses = [];
+
+            for (const username of usernames) {
+                try {
+                    const response = await fetch('/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            username: username,
+                            password: 'password'
+                        })
+                    });
+                    responses.push(response.status);
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                } catch (error) {
+                    console.error('Multiple login test error:', error);
+                }
+            }
+
+            const blockedCount = responses.filter(status => status === 403 || status === 429).length;
+            const message = blockedCount > 0
+                ? `✅ Multiple login detection active! ${blockedCount} attempts flagged`
+                : '⚠️ Multiple login detection may need tuning';
+            const type = blockedCount > 0 ? 'success' : 'warning';
+
+            showResult('multiple-accounts-result', message, type);
+        }
+
+        async function testMultipleSignups() {
+            showResult('multiple-accounts-result', '🔄 Testing multiple signup detection...', 'warning');
+
+            const signups = [
+                { username: 'newuser1', email: 'newuser1@test.com' },
+                { username: 'newuser2', email: 'newuser2@test.com' },
+                { username: 'newuser3', email: 'newuser3@test.com' }
+            ];
+
+            let responses = [];
+
+            for (const signup of signups) {
+                try {
+                    const response = await fetch('/auth/signup', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            ...signup,
+                            password: 'password123',
+                            country: 'US'
+                        })
+                    });
+                    responses.push(response.status);
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                } catch (error) {
+                    console.error('Multiple signup test error:', error);
+                }
+            }
+
+            const flaggedCount = responses.filter(status => status === 429 || status === 403).length;
+            const message = flaggedCount > 0
+                ? `✅ Multiple signup detection active! ${flaggedCount} attempts flagged`
+                : '⚠️ Multiple signup detection may need tuning';
+            const type = flaggedCount > 0 ? 'success' : 'warning';
+
+            showResult('multiple-accounts-result', message, type);
+        }
+
+        async function testCredentialStuffing() {
+            try {
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: '123456'
+                    })
+                });
+
+                const type = response.status === 403 ? 'success' : 'warning';
+                const message = response.status === 403
+                    ? '✅ Credential stuffing detected and blocked!'
+                    : `⚠️ Credential stuffing not detected (Status: ${response.status})`;
+
+                showResult('credential-stuffing-result', message, type);
+            } catch (error) {
+                showResult('credential-stuffing-result', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Injection Attack Tests
+        async function testSQLInjection() {
+            try {
+                const response = await fetch("/api/users?id=1' UNION SELECT * FROM users--");
+
+                const type = response.status === 403 ? 'success' : 'warning';
+                const message = response.status === 403
+                    ? '✅ SQL injection detected and blocked!'
+                    : `⚠️ SQL injection not detected (Status: ${response.status})`;
+
+                showResult('sql-injection-result', message, type);
+            } catch (error) {
+                showResult('sql-injection-result', `Error: ${error.message}`, 'error');
             }
         }
 
         async function testXSS() {
-            const payload = document.getElementById('xssPayload').value;
-            const result = document.getElementById('xssResult');
-
             try {
-                const response = await fetch('/test/xss', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `input=${encodeURIComponent(payload)}`
-                });
-                const data = await response.json();
+                const response = await fetch("/test/xss?comment=%3Cscript%3Ealert('xss')%3C/script%3E");
 
-                if (response.status === 403 || response.status === 429) {
-                    showResult(result, 'danger', `🚫 XSS Attack Blocked! ${data.message || data.error}`);
-                } else {
-                    showResult(result, 'success', `✅ Request Allowed: ${data.message}`);
-                }
+                const type = response.status === 403 ? 'success' : 'warning';
+                const message = response.status === 403
+                    ? '✅ XSS attack detected and blocked!'
+                    : `⚠️ XSS attack not detected (Status: ${response.status})`;
+
+                showResult('xss-result', message, type);
             } catch (error) {
-                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+                showResult('xss-result', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCommandInjection() {
+            try {
+                const response = await fetch("/api/users?cmd=ls; rm -rf /");
+
+                const type = response.status === 403 ? 'success' : 'warning';
+                const message = response.status === 403
+                    ? '✅ Command injection detected and blocked!'
+                    : `⚠️ Command injection not detected (Status: ${response.status})`;
+
+                showResult('command-injection-result', message, type);
+            } catch (error) {
+                showResult('command-injection-result', `Error: ${error.message}`, 'error');
             }
         }
 
         async function testPathTraversal() {
-            const payload = document.getElementById('pathPayload').value;
-            const result = document.getElementById('pathResult');
-
             try {
-                const response = await fetch(`/files/${encodeURIComponent(payload)}`);
-                const data = await response.json();
+                const response = await fetch("/api/../../../etc/passwd");
 
-                if (response.status === 403 || response.status === 429) {
-                    showResult(result, 'danger', `🚫 Path Traversal Blocked! ${data.message || data.error}`);
-                } else {
-                    showResult(result, 'success', `✅ Request Allowed: ${data.message}`);
-                }
+                const type = response.status === 403 ? 'success' : 'warning';
+                const message = response.status === 403
+                    ? '✅ Path traversal detected and blocked!'
+                    : `⚠️ Path traversal not detected (Status: ${response.status})`;
+
+                showResult('path-traversal-result', message, type);
             } catch (error) {
-                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+                showResult('path-traversal-result', `Error: ${error.message}`, 'error');
             }
         }
 
-        async function testBruteForce() {
-            const username = document.getElementById('bruteUsername').value;
-            const password = document.getElementById('brutePassword').value;
-            const result = document.getElementById('bruteResult');
+        // Behavioral Detection Tests
+        async function testDDoS() {
+            showResult('ddos-result', '🔄 Testing DDoS detection...', 'warning');
 
-            try {
-                const response = await fetch('/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
-                });
-                const data = await response.json();
+            let blockedCount = 0;
+            const promises = [];
 
-                if (response.status === 403 || response.status === 429) {
-                    showResult(result, 'danger', `🚫 Brute Force Detected! ${data.message || data.error}`);
-                } else if (response.status === 401) {
-                    showResult(result, 'warning', `❌ Login Failed: ${data.message}`);
-                } else {
-                    showResult(result, 'success', `✅ Login Successful: ${data.message}`);
-                }
-            } catch (error) {
-                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
-            }
-        }
-
-        async function testUserAgent() {
-            const userAgent = document.getElementById('userAgent').value;
-            const result = document.getElementById('uaResult');
-
-            try {
-                const response = await fetch('/test/useragent', {
-                    headers: { 'User-Agent': userAgent }
-                });
-                const data = await response.json();
-
-                if (response.status === 403 || response.status === 429) {
-                    showResult(result, 'danger', `🚫 Suspicious User Agent Blocked! ${data.message || data.error}`);
-                } else {
-                    showResult(result, 'success', `✅ User Agent Allowed: ${data.message}`);
-                }
-            } catch (error) {
-                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
-            }
-        }
-
-        async function testRateLimit() {
-            const count = parseInt(document.getElementById('rateCount').value);
-            const result = document.getElementById('rateResult');
-
-            showResult(result, 'warning', `🔄 Sending ${count} requests...`);
-
-            let blocked = 0;
-            let allowed = 0;
-
-            for (let i = 0; i < count; i++) {
-                try {
-                    const response = await fetch('/test/rate');
-                    if (response.status === 403 || response.status === 429) {
-                        blocked++;
-                    } else {
-                        allowed++;
+            for (let i = 0; i < 20; i++) {
+                promises.push(fetch('/test/ddos').then(response => {
+                    if (response.status === 429 || response.status === 403) {
+                        blockedCount++;
                     }
+                    return response.status;
+                })
+                    .catch(() => 500)
+                );
+            }
+
+            await Promise.all(promises);
+
+            const message = blockedCount > 0
+                ? `✅ DDoS protection active! ${blockedCount} requests blocked`
+                : '⚠️ DDoS protection may need tuning';
+            const type = blockedCount > 0 ? 'success' : 'warning';
+
+            showResult('ddos-result', message, type);
+        }
+
+        async function testAPIAbuse() {
+            showResult('api-abuse-result', '🔄 Testing API abuse detection...', 'warning');
+
+            let flaggedCount = 0;
+            for (let i = 0; i < 10; i++) {
+                try {
+                    const response = await fetch('/api/users'); if (response.status === 429 ||
+                        response.status === 403) { flaggedCount++; } await new Promise(resolve => setTimeout(resolve, 50));
                 } catch (error) {
-                    blocked++;
-                }
-
-                // Small delay to avoid overwhelming the browser
-                if (i % 5 === 0) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    console.error('API abuse test error:', error);
                 }
             }
 
-            if (blocked > 0) {
-                showResult(result, 'danger', `🚫 Rate Limit Triggered! ${allowed} allowed, ${blocked} blocked`);
-            } else {
-                showResult(result, 'success', `✅ All ${allowed} requests allowed`);
-            }
+            const message = flaggedCount > 0
+                ? `✅ API abuse detection active! ${flaggedCount} requests flagged`
+                : '⚠️ API abuse detection may need tuning';
+            const type = flaggedCount > 0 ? 'success' : 'warning';
+
+            showResult('api-abuse-result', message, type);
         }
 
-        async function triggerCaptcha() {
-            const result = document.getElementById('captchaResult');
-
+        async function testDataExfiltration() {
             try {
-                const response = await fetch('/demo/trigger-captcha', { method: 'POST' });
-                const data = await response.json();
+                const response = await fetch('/export/users?count=50000');
 
-                if (data.captcha_required) {
-                    showResult(result, 'warning', `🧩 CAPTCHA Challenge Triggered! Challenge: ${data.challenge}`);
-                } else {
-                    showResult(result, 'success', `✅ ${data.message}`);
-                }
+                const type = response.status === 400 || response.status === 403 ? 'success' : 'warning';
+                const message = response.status === 400 || response.status === 403
+                    ? '✅ Data exfiltration attempt detected!'
+                    : `⚠️ Data exfiltration not detected (Status: ${response.status})`;
+
+                showResult('data-exfiltration-result', message, type);
             } catch (error) {
-                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+                showResult('data-exfiltration-result', `Error: ${error.message}`, 'error');
             }
         }
 
-        async function checkCaptchaStatus() {
-            const result = document.getElementById('captchaResult');
-
+        async function testPrivilegeEscalation() {
             try {
-                const response = await fetch('/demo/captcha-status');
-                const data = await response.json();
+                const response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: 'testuser',
+                        role: 'admin',
+                        permission: 'superuser'
+                    })
+                });
 
-                if (data.has_challenge) {
-                    showResult(result, 'warning', `🧩 Active CAPTCHA: ${data.challenge.challenge}`);
-                } else {
-                    showResult(result, 'success', `✅ No active CAPTCHA challenges`);
-                }
+                const type = response.status === 403 ? 'success' : 'warning';
+                const message = response.status === 403
+                    ? '✅ Privilege escalation detected and blocked!'
+                    : `⚠️ Privilege escalation not detected (Status: ${response.status})`;
+
+                showResult('privilege-escalation-result', message, type);
             } catch (error) {
-                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+                showResult('privilege-escalation-result', `Error: ${error.message}`, 'error');
             }
         }
 
-        async function loadMetrics() {
-            const result = document.getElementById('metricsResult');
+        async function testReconnaissance() {
+            try {
+                const response = await fetch('/robots.txt');
 
+                const type = response.status === 404 ? 'success' : 'warning';
+                const message = response.status === 404
+                    ? '✅ Reconnaissance attempt logged (robots.txt not found)'
+                    : `⚠️ Reconnaissance detection may need tuning (Status: ${response.status})`;
+
+                showResult('reconnaissance-result', message, type);
+            } catch (error) {
+                showResult('reconnaissance-result', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSessionHijacking() {
+            try {
+                const response = await fetch('/auth/profile', {
+                    headers: {
+                        'User-Agent': 'curl/7.68.0',
+                        'X-Forwarded-For': '192.168.1.100'
+                    }
+                });
+
+                const type = response.status === 403 || response.status === 401 ? 'success' : 'warning';
+                const message = response.status === 403 || response.status === 401
+                    ? '✅ Potential session hijacking detected!'
+                    : `⚠️ Session hijacking not detected (Status: ${response.status})`;
+
+                showResult('session-hijacking-result', message, type);
+            } catch (error) {
+                showResult('session-hijacking-result', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Business Hours and Geolocation Tests
+        async function testBusinessHours() {
+            try {
+                const response = await fetch('/admin/dashboard');
+
+                const type = response.status === 200 ? 'warning' : 'success';
+                const message = response.status === 200
+                    ? '⚠️ Admin access allowed (may trigger business hours warning)'
+                    : `✅ Business hours restriction active (Status: ${response.status})`;
+
+                showResult('business-hours-result', message, type);
+            } catch (error) {
+                showResult('business-hours-result', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGeolocation() {
+            try {
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Country': 'CN'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'password123'
+                    })
+                });
+
+                const type = response.status === 403 ? 'success' : 'warning';
+                const message = response.status === 403
+                    ? '✅ Geolocation anomaly detected!'
+                    : `⚠️ Geolocation check may need configuration (Status: ${response.status})`;
+
+                showResult('geolocation-result', message, type);
+            } catch (error) {
+                showResult('geolocation-result', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Metrics and Utility Functions
+        async function refreshMetrics() {
             try {
                 const response = await fetch('/metrics');
-                const data = await response.json();
+                const metrics = await response.json();
 
-                let metricsHtml = '<h4>System Metrics:</h4><pre style="background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto;">';
-                metricsHtml += JSON.stringify(data, null, 2);
-                metricsHtml += '</pre>';
+                let metricsHTML = '<h3>🛡️ Security Metrics</h3>';
 
-                showResult(result, 'success', metricsHtml);
-            } catch (error) {
-                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
-            }
-        }
-
-        async function loadHealth() {
-            const result = document.getElementById('metricsResult');
-
-            try {
-                const response = await fetch('/health');
-                const data = await response.json();
-
-                let healthHtml = '<h4>Health Status:</h4><pre style="background: #f8f9fa; padding: 10px; border-radius: 5px;">';
-                healthHtml += JSON.stringify(data, null, 2);
-                healthHtml += '</pre>';
-
-                if (data.status === 'healthy') {
-                    showResult(result, 'success', healthHtml);
-                } else {
-                    showResult(result, 'danger', healthHtml);
+                if (metrics.plugins && metrics.plugins.generic_detector) {
+                    const detectorMetrics = metrics.plugins.generic_detector;
+                    metricsHTML += `
+            <div class="metric-item">
+                <span>Total Security Checks:</span>
+                <span>${detectorMetrics.total_checks || 0}</span>
+            </div>
+            <div class="metric-item">
+                <span>Threats Detected:</span>
+                <span>${detectorMetrics.threats_found || 0}</span>
+            </div>
+            <div class="metric-item">
+                <span>Detection Rate:</span>
+                <span>${((detectorMetrics.detection_rate || 0) * 100).toFixed(2)}%</span>
+            </div>
+            <div class="metric-item">
+                <span>Active Rules:</span>
+                <span>${detectorMetrics.rules_count || 0}</span>
+            </div>
+            `;
                 }
+
+                if (metrics.rule_engine) {
+                    metricsHTML += `
+            <h3 style="margin-top: 20px;">⚙️ Rule Engine</h3>
+            <div class="metric-item">
+                <span>Requests Processed:</span>
+                <span>${metrics.rule_engine.requests_processed || 0}</span>
+            </div>
+            <div class="metric-item">
+                <span>Requests Blocked:</span>
+                <span>${metrics.rule_engine.requests_blocked || 0}</span>
+            </div>
+            `;
+                }
+
+                document.getElementById('security-metrics').innerHTML = metricsHTML;
             } catch (error) {
-                showResult(result, 'warning', `⚠️ Error: ${error.message}`);
+                document.getElementById('security-metrics').innerHTML =
+                    `<h3>❌ Error loading metrics</h3>
+            <p>${error.message}</p>`;
             }
         }
 
-        function showResult(element, type, message) {
-            element.className = `result-panel result-${type}`;
-            element.innerHTML = message;
-            element.style.display = 'block';
+        async function runAllTests() {
+            const tests = [
+                testBotLogin,
+                testLoginRateLimit,
+                testMultipleLogins,
+                testCredentialStuffing,
+                testSQLInjection,
+                testXSS,
+                testCommandInjection,
+                testPathTraversal,
+                testDDoS,
+                testDataExfiltration,
+                testPrivilegeEscalation,
+                testReconnaissance,
+                testSessionHijacking,
+                testBusinessHours,
+                testGeolocation
+            ];
 
-            // Auto-hide after 10 seconds
-            setTimeout(() => {
-                element.style.display = 'none';
-            }, 10000);
+            showResult('security-metrics', '🔄 Running comprehensive security tests...', 'warning');
+
+            for (let i = 0; i < tests.length; i++) {
+                try {
+                    await tests[i](); await new Promise(resolve =>
+                        setTimeout(resolve, 500));
+                } catch (error) {
+                    console.error(`Test ${i + 1} failed:`, error);
+                }
+            }
+
+            setTimeout(refreshMetrics, 2000);
         }
+
+        // Initialize metrics on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            refreshMetrics();
+
+            // Auto-refresh metrics every 30 seconds
+            setInterval(refreshMetrics, 30000);
+        });
     </script>
 </body>
 

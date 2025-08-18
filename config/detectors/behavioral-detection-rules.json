@@ -1,0 +1,229 @@
+{
+    "detector": {
+        "name": "generic_detector",
+        "enabled": true,
+        "priority": 50,
+        "parameters": {
+            "rules": [
+                {
+                    "id": "ddos_detection",
+                    "name": "DDoS Attack Detection",
+                    "description": "Detects distributed denial of service attacks",
+                    "enabled": true,
+                    "type": "rate_limit",
+                    "severity": 9,
+                    "confidence": 0.9,
+                    "priority": 100,
+                    "conditions": [
+                        {
+                            "field": "method",
+                            "operator": "in",
+                            "value": [ "GET", "POST", "PUT", "DELETE" ]
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "ddos", "rate_limit", "high_volume", "attack" ],
+                    "parameters": {
+                        "window_seconds": 60,
+                        "max_requests": 100,
+                        "block_duration": 30
+                    }
+                },
+                {
+                    "id": "session_hijacking",
+                    "name": "Session Hijacking Detection",
+                    "description": "Detects potential session hijacking attempts",
+                    "enabled": false,
+                    "type": "behavioral",
+                    "severity": 8,
+                    "confidence": 0.7,
+                    "priority": 80,
+                    "conditions": [
+                        {
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "header",
+                                    "key": "User-Agent",
+                                    "operator": "regex",
+                                    "value": "(?i)(curl|wget|python|java|go-http)"
+                                },
+                                {
+                                    "field": "header",
+                                    "key": "X-Forwarded-For",
+                                    "operator": "regex",
+                                    "value": "^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|127\\.)"
+                                }
+                            ]
+                        }
+                    ],
+                    "actions": [ "warning_action" ],
+                    "tags": [ "session_hijacking", "suspicious_headers", "security_bypass" ]
+                },
+                {
+                    "id": "api_abuse",
+                    "name": "API Abuse Detection",
+                    "description": "Detects excessive API usage patterns",
+                    "enabled": true,
+                    "type": "rate_limit",
+                    "severity": 6,
+                    "confidence": 0.8,
+                    "priority": 70,
+                    "conditions": [
+                        {
+                            "field": "path",
+                            "operator": "regex",
+                            "value": "^/api/"
+                        }
+                    ],
+                    "actions": [ "warning_action" ],
+                    "tags": [ "api_abuse", "rate_limit", "resource_exhaustion" ],
+                    "parameters": {
+                        "window_seconds": 300,
+                        "max_requests": 500,
+                        "warning_threshold": 400
+                    }
+                },
+                {
+                    "id": "privilege_escalation",
+                    "name": "Privilege Escalation Attempt",
+                    "description": "Detects attempts to access privileged resources",
+                    "enabled": true,
+                    "type": "behavioral",
+                    "severity": 9,
+                    "confidence": 0.9,
+                    "priority": 95,
+                    "conditions": [
+                        {
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "regex",
+                                    "value": "(?i)/(admin|root|sudo|superuser|administrator)"
+                                },
+                                {
+                                    "field": "body",
+                                    "operator": "regex",
+                                    "value": "(?i)(role|permission|privilege).*[=:].*[\"']?(admin|root|superuser)[\"']?"
+                                }
+                            ]
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "privilege_escalation", "unauthorized_access", "security_bypass" ]
+                },
+                {
+                    "id": "data_exfiltration",
+                    "name": "Data Exfiltration Detection",
+                    "description": "Detects potential data exfiltration attempts",
+                    "enabled": true,
+                    "type": "behavioral",
+                    "severity": 8,
+                    "confidence": 0.7,
+                    "priority": 85,
+                    "conditions": [
+                        {
+                            "logical": "and",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "regex",
+                                    "value": "(?i)/(export|download|backup|dump|extract)"
+                                },
+                                {
+                                    "field": "query_param",
+                                    "operator": "regex",
+                                    "value": "(?i)(limit|count|size).*[=>].*[0-9]{4,}"
+                                }
+                            ]
+                        }
+                    ],
+                    "actions": [ "warning_action" ],
+                    "tags": [ "data_exfiltration", "bulk_download", "suspicious_activity" ]
+                },
+                {
+                    "id": "reconnaissance_scan",
+                    "name": "Reconnaissance Scanning",
+                    "description": "Detects reconnaissance and scanning activities",
+                    "enabled": false,
+                    "type": "behavioral",
+                    "severity": 5,
+                    "confidence": 0.7,
+                    "priority": 65,
+                    "conditions": [
+                        {
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "regex",
+                                    "value": "(?i)/(robots\\.txt|sitemap\\.xml|\\.well-known|crossdomain\\.xml)"
+                                },
+                                {
+                                    "field": "user_agent",
+                                    "operator": "regex",
+                                    "value": "(?i)(nmap|masscan|zap|burp|nikto|dirb|gobuster|wfuzz)"
+                                }
+                            ]
+                        }
+                    ],
+                    "actions": [ "warning_action" ],
+                    "tags": [ "reconnaissance", "scanning", "information_gathering" ]
+                }
+            ]
+        }
+    },
+    "action_rules": [
+        {
+            "name": "DDoS Protection Block",
+            "description": "Block DDoS attacks immediately",
+            "min_severity": 9,
+            "min_confidence": 0.9,
+            "actions": [ "block_action" ],
+            "threat_tags": [ "ddos", "high_volume" ],
+            "priority": 100,
+            "enabled": true
+        },
+        {
+            "name": "Privilege Escalation Block",
+            "description": "Block privilege escalation attempts",
+            "min_severity": 9,
+            "min_confidence": 0.8,
+            "actions": [ "block_action" ],
+            "threat_tags": [ "privilege_escalation" ],
+            "priority": 95,
+            "enabled": true
+        },
+        {
+            "name": "Security Bypass Block",
+            "description": "Block attempts to bypass security measures",
+            "min_severity": 7,
+            "min_confidence": 0.7,
+            "actions": [ "block_action" ],
+            "threat_tags": [ "security_bypass", "session_hijacking" ],
+            "priority": 88,
+            "enabled": true
+        },
+        {
+            "name": "Behavioral Anomaly Warning",
+            "description": "Warn on suspicious behavioral patterns",
+            "min_severity": 4,
+            "min_confidence": 0.6,
+            "actions": [ "warning_action" ],
+            "threat_tags": [ "suspicious_behavior", "reconnaissance" ],
+            "priority": 75,
+            "enabled": true
+        },
+        {
+            "name": "Data Protection Warning",
+            "description": "Warn on potential data exfiltration attempts",
+            "min_severity": 6,
+            "min_confidence": 0.6,
+            "actions": [ "warning_action" ],
+            "threat_tags": [ "data_exfiltration", "bulk_download" ],
+            "priority": 82,
+            "enabled": true
+        }
+    ]
+}

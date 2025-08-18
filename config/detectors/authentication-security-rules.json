@@ -1,0 +1,220 @@
+{
+    "detector": {
+        "name": "generic_detector",
+        "enabled": true,
+        "priority": 50,
+        "parameters": {
+            "rules": [
+                {
+                    "id": "bot_login_detection",
+                    "name": "Bot Login Detection",
+                    "description": "Detects automated bot login attempts based on user agent patterns",
+                    "enabled": true,
+                    "type": "behavioral",
+                    "severity": 7,
+                    "confidence": 0.8,
+                    "priority": 85,
+                    "conditions": [
+                        {
+                            "logical": "and",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "regex",
+                                    "value": "(?i)/(login|signin|auth|authenticate)"
+                                },
+                                {
+                                    "field": "user_agent",
+                                    "operator": "regex",
+                                    "value": "(?i)(bot|crawler|spider|scraper|automated|python|curl|wget|postman|insomnia|^$)"
+                                }
+                            ]
+                        }
+                    ],
+                    "actions": [ "captcha_action" ],
+                    "tags": [ "bot_detection", "authentication", "automated_attack" ]
+                },
+                {
+                    "id": "login_rate_limit",
+                    "name": "Login Rate Limiting",
+                    "description": "Detects excessive login attempts from single IP",
+                    "enabled": true,
+                    "type": "rate_limit",
+                    "severity": 8,
+                    "confidence": 0.9,
+                    "priority": 90,
+                    "conditions": [
+                        {
+                            "field": "path",
+                            "operator": "regex",
+                            "value": "(?i)/(login|signin|auth|authenticate)"
+                        }
+                    ],
+                    "actions": [ "incremental_block_action" ],
+                    "tags": [ "rate_limit", "authentication", "brute_force" ],
+                    "parameters": {
+                        "window_seconds": 300,
+                        "max_attempts": 5,
+                        "block_duration": 900
+                    }
+                },
+                {
+                    "id": "multiple_login_usernames",
+                    "name": "Multiple Login Usernames from Same IP",
+                    "description": "Detects attempts to login with multiple different usernames from same IP",
+                    "enabled": true,
+                    "type": "behavioral",
+                    "severity": 7,
+                    "confidence": 0.8,
+                    "priority": 80,
+                    "conditions": [
+                        {
+                            "logical": "and",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "regex",
+                                    "value": "(?i)/(login|signin|auth|authenticate)"
+                                },
+                                {
+                                    "field": "body",
+                                    "operator": "regex",
+                                    "value": "(?i)(username|email|user|login)"
+                                }
+                            ]
+                        }
+                    ],
+                    "actions": [ "warning_action" ],
+                    "tags": [ "multiple_accounts", "authentication", "suspicious_behavior" ],
+                    "parameters": {
+                        "window_seconds": 600,
+                        "max_unique_usernames": 3
+                    }
+                },
+                {
+                    "id": "multiple_signup_usernames",
+                    "name": "Multiple Signup Usernames from Same IP",
+                    "description": "Detects attempts to create multiple accounts from same IP",
+                    "enabled": true,
+                    "type": "behavioral",
+                    "severity": 6,
+                    "confidence": 0.7,
+                    "priority": 75,
+                    "conditions": [
+                        {
+                            "logical": "and",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "regex",
+                                    "value": "(?i)/(signup|register|create-account|join)"
+                                },
+                                {
+                                    "field": "method",
+                                    "operator": "equals",
+                                    "value": "POST"
+                                }
+                            ]
+                        }
+                    ],
+                    "actions": [ "multiple_signup_action" ],
+                    "tags": [ "multiple_signups", "registration", "suspicious_behavior" ],
+                    "parameters": {
+                        "window_seconds": 3600,
+                        "max_signups": 2
+                    }
+                },
+                {
+                    "id": "credential_stuffing",
+                    "name": "Credential Stuffing Detection",
+                    "description": "Detects credential stuffing attacks using common password patterns",
+                    "enabled": true,
+                    "type": "behavioral",
+                    "severity": 8,
+                    "confidence": 0.8,
+                    "priority": 85,
+                    "conditions": [
+                        {
+                            "logical": "and",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "regex",
+                                    "value": "(?i)/(login|signin|auth|authenticate)"
+                                },
+                                {
+                                    "field": "body",
+                                    "operator": "regex",
+                                    "value": "(?i)(password|passwd).*[=:].*[\"']?(123456|password|admin|qwerty|letmein|welcome|monkey|dragon)[\"']?"
+                                }
+                            ]
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "credential_stuffing", "authentication", "weak_passwords" ]
+                },
+                {
+                    "id": "suspicious_user_agent",
+                    "name": "Suspicious User Agent",
+                    "description": "Blocks requests with suspicious user agents",
+                    "enabled": true,
+                    "type": "user_agent",
+                    "severity": 5,
+                    "confidence": 0.6,
+                    "priority": 75,
+                    "conditions": [
+                        {
+                            "field": "user_agent",
+                            "operator": "regex",
+                            "value": "(?i)bot"
+                        }
+                    ],
+                    "actions": [ "warning_action" ],
+                    "tags": [ "suspicious", "bot" ]
+                }
+            ]
+        }
+    },
+    "action_rules": [
+        {
+            "name": "Authentication Security Block",
+            "description": "Block high-risk authentication threats",
+            "min_severity": 8,
+            "min_confidence": 0.8,
+            "actions": [ "block_action" ],
+            "threat_tags": [ "credential_stuffing" ],
+            "priority": 98,
+            "enabled": true
+        },
+        {
+            "name": "Bot Detection Response",
+            "description": "Challenge suspected bot activities with CAPTCHA",
+            "min_severity": 6,
+            "min_confidence": 0.7,
+            "actions": [ "captcha_action" ],
+            "threat_tags": [ "bot_detection" ],
+            "priority": 85,
+            "enabled": true
+        },
+        {
+            "name": "Rate Limiting Block",
+            "description": "Block excessive requests and brute force attempts",
+            "min_severity": 7,
+            "min_confidence": 0.8,
+            "actions": [ "incremental_block_action" ],
+            "threat_tags": [ "rate_limit", "brute_force" ],
+            "priority": 90,
+            "enabled": true
+        },
+        {
+            "name": "Multiple Account Activity",
+            "description": "Handle multiple account activities from same IP",
+            "min_severity": 5,
+            "min_confidence": 0.7,
+            "actions": [ "multiple_signup_action" ],
+            "threat_tags": [ "multiple_accounts", "multiple_signups" ],
+            "priority": 80,
+            "enabled": true
+        }
+    ]
+}

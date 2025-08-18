@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/oarkflow/guard/pkg/plugins"
 )
@@ -16,6 +18,7 @@ type GenericDetector struct {
 	version     string
 	description string
 	rules       []GenericRule
+	stateStore  plugins.StateStore
 	metrics     struct {
 		totalChecks    int64
 		threatsFound   int64
@@ -43,10 +46,11 @@ type GenericRule struct {
 
 // RuleCondition defines a condition for a rule
 type RuleCondition struct {
-	Field    string          `json:"field"`    // "path", "header", "query_param", "ip", "user_agent", etc.
-	Operator string          `json:"operator"` // "contains", "equals", "regex", "greater_than", etc.
-	Value    any             `json:"value"`
-	Negate   bool            `json:"negate"`
+	Field    string          `json:"field"`              // "path", "header", "query_param", "ip", "user_agent", etc.
+	Key      string          `json:"key,omitempty"`      // Key for header/query_param lookups (e.g., "User-Agent", "id")
+	Operator string          `json:"operator"`           // "contains", "equals", "regex", "greater_than", etc.
+	Value    any             `json:"value"`              // Value to compare against
+	Negate   bool            `json:"negate"`             // Negate the result
 	Children []RuleCondition `json:"children,omitempty"` // For nested conditions (AND/OR)
 	Logical  string          `json:"logical,omitempty"`  // "and", "or" for combining children
 }
@@ -86,6 +90,11 @@ func (d *GenericDetector) Initialize(config map[string]any) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	// Get state store if provided
+	if stateStore, ok := config["state_store"].(plugins.StateStore); ok {
+		d.stateStore = stateStore
+	}
+
 	// Parse rules from configuration
 	if rules, ok := config["rules"].([]any); ok {
 		d.rules = make([]GenericRule, 0, len(rules))
@@ -119,12 +128,16 @@ func (d *GenericDetector) Initialize(config map[string]any) error {
 				}
 				if severity, ok := ruleMap["severity"].(float64); ok {
 					genericRule.Severity = int(severity)
+				} else if severityInt, ok := ruleMap["severity"].(int); ok {
+					genericRule.Severity = severityInt
 				}
 				if confidence, ok := ruleMap["confidence"].(float64); ok {
 					genericRule.Confidence = confidence
 				}
 				if priority, ok := ruleMap["priority"].(float64); ok {
 					genericRule.Priority = int(priority)
+				} else if priorityInt, ok := ruleMap["priority"].(int); ok {
+					genericRule.Priority = priorityInt
 				}
 
 				// Parse parameters
@@ -143,6 +156,9 @@ func (d *GenericDetector) Initialize(config map[string]any) error {
 							if operator, ok := condMap["operator"].(string); ok {
 								ruleCondition.Operator = operator
 							}
+							if key, ok := condMap["key"].(string); ok {
+								ruleCondition.Key = key
+							}
 							if value, ok := condMap["value"]; ok {
 								ruleCondition.Value = value
 							}
@@ -159,6 +175,9 @@ func (d *GenericDetector) Initialize(config map[string]any) error {
 										}
 										if operator, ok := childMap["operator"].(string); ok {
 											childCondition.Operator = operator
+										}
+										if key, ok := childMap["key"].(string); ok {
+											childCondition.Key = key
 										}
 										if value, ok := childMap["value"]; ok {
 											childCondition.Value = value
@@ -256,13 +275,81 @@ func (d *GenericDetector) Detect(ctx context.Context, reqCtx *plugins.RequestCon
 
 // evaluateRule checks if a rule's conditions are met
 func (d *GenericDetector) evaluateRule(rule GenericRule, reqCtx *plugins.RequestContext) bool {
-	// For each condition in the rule
+	// Handle rate limiting rules specially
+	if rule.Type == "rate_limit" {
+		return d.evaluateRateLimitRule(rule, reqCtx)
+	}
+
+	// For other rule types, evaluate conditions normally
 	for _, condition := range rule.Conditions {
 		if !d.evaluateCondition(condition, reqCtx) {
 			return false
 		}
 	}
 	return true
+}
+
+// evaluateRateLimitRule handles rate limiting logic
+func (d *GenericDetector) evaluateRateLimitRule(rule GenericRule, reqCtx *plugins.RequestContext) bool {
+	if d.stateStore == nil {
+		return false
+	}
+
+	// First check if basic conditions are met (if any)
+	for _, condition := range rule.Conditions {
+		if !d.evaluateCondition(condition, reqCtx) {
+			return false
+		}
+	}
+
+	// Extract rate limiting parameters
+	windowSeconds, ok := rule.Parameters["window_seconds"]
+	if !ok {
+		return false
+	}
+	maxRequests, ok := rule.Parameters["max_requests"]
+	if !ok {
+		return false
+	}
+
+	// Convert parameters to proper types
+	window := time.Duration(0)
+	maxReq := int64(0)
+
+	switch v := windowSeconds.(type) {
+	case float64:
+		window = time.Duration(v) * time.Second
+	case int:
+		window = time.Duration(v) * time.Second
+	case int64:
+		window = time.Duration(v) * time.Second
+	default:
+		return false
+	}
+
+	switch v := maxRequests.(type) {
+	case float64:
+		maxReq = int64(v)
+	case int:
+		maxReq = int64(v)
+	case int64:
+		maxReq = v
+	default:
+		return false
+	}
+
+	// Create rate limiting key based on IP and rule ID
+	key := fmt.Sprintf("rate_limit:%s:%s", rule.ID, reqCtx.IP)
+
+	// Increment counter with TTL
+	ctx := context.Background()
+	count, err := d.stateStore.IncrementWithTTL(ctx, key, 1, window)
+	if err != nil {
+		return false
+	}
+
+	// Check if rate limit exceeded
+	return count > maxReq
 }
 
 // evaluateCondition checks if a single condition is met
@@ -292,32 +379,85 @@ func (d *GenericDetector) evaluateCondition(condition RuleCondition, reqCtx *plu
 		// Evaluate simple condition
 		switch condition.Field {
 		case "path":
-			result = d.evaluateStringCondition(condition, reqCtx.Path)
+			// Check both path and query parameters for path-based patterns
+			testString := reqCtx.Path
+			// Also check query parameters for path-based attacks
+			for _, v := range reqCtx.QueryParams {
+				testString += " " + v
+			}
+			result = d.evaluateStringCondition(condition, testString)
 		case "method":
 			result = d.evaluateStringCondition(condition, reqCtx.Method)
 		case "ip":
 			result = d.evaluateStringCondition(condition, reqCtx.IP)
 		case "user_agent":
-			result = d.evaluateStringCondition(condition, reqCtx.Headers["User-Agent"])
+			ua := reqCtx.UserAgent
+			if ua == "" {
+				ua = reqCtx.Headers["User-Agent"]
+			}
+			result = d.evaluateStringCondition(condition, ua)
+		case "country":
+			result = d.evaluateStringCondition(condition, reqCtx.Country)
+		case "asn":
+			result = d.evaluateStringCondition(condition, reqCtx.ASN)
+		case "content_length":
+			result = d.evaluateNumericCondition(condition, float64(reqCtx.ContentLength))
 		case "header":
-			// For header, we need to know which header to check
-			if headerName, ok := condition.Value.(string); ok {
-				if headerValue, exists := reqCtx.Headers[headerName]; exists {
+			// Prefer explicit key, else support matching any header value
+			if condition.Key != "" {
+				if headerValue, exists := reqCtx.Headers[condition.Key]; exists {
 					result = d.evaluateStringCondition(condition, headerValue)
+				}
+			} else {
+				// Legacy: support {"name":"Header","value":"expected"} OR scan all headers for value
+				switch v := condition.Value.(type) {
+				case string:
+					for _, hv := range reqCtx.Headers {
+						if d.evaluateStringCondition(RuleCondition{Operator: condition.Operator, Value: v}, hv) {
+							result = true
+							break
+						}
+					}
+				case map[string]any:
+					if name, ok := v["name"].(string); ok {
+						if hv, exists := reqCtx.Headers[name]; exists {
+							if expected, ok := v["value"].(string); ok {
+								result = d.evaluateStringCondition(RuleCondition{Operator: condition.Operator, Value: expected}, hv)
+							}
+						}
+					}
 				}
 			}
 		case "query_param":
-			// For query_param, we need to know which parameter to check
-			if paramName, ok := condition.Value.(string); ok {
-				if paramValue, exists := reqCtx.QueryParams[paramName]; exists {
-					result = d.evaluateStringCondition(condition, paramValue)
+			// Prefer explicit key, else support matching any param value
+			if condition.Key != "" {
+				if pv, exists := reqCtx.QueryParams[condition.Key]; exists {
+					result = d.evaluateStringCondition(condition, pv)
+				}
+			} else {
+				switch v := condition.Value.(type) {
+				case string:
+					for _, pv := range reqCtx.QueryParams {
+						if d.evaluateStringCondition(RuleCondition{Operator: condition.Operator, Value: v}, pv) {
+							result = true
+							break
+						}
+					}
+				case map[string]any:
+					if name, ok := v["name"].(string); ok {
+						if pv, exists := reqCtx.QueryParams[name]; exists {
+							if expected, ok := v["value"].(string); ok {
+								result = d.evaluateStringCondition(RuleCondition{Operator: condition.Operator, Value: expected}, pv)
+							}
+						}
+					}
 				}
 			}
 		case "body":
-			// This would require access to the request body
-			// For now, we'll skip this
+			// Evaluate request body content
+			result = d.evaluateStringCondition(condition, reqCtx.Body)
 		default:
-			// Custom field handling
+			// Custom field handling (metadata and others)
 			result = d.evaluateCustomCondition(condition, reqCtx)
 		}
 	}
@@ -333,13 +473,20 @@ func (d *GenericDetector) evaluateCondition(condition RuleCondition, reqCtx *plu
 // evaluateStringCondition evaluates a condition against a string value
 func (d *GenericDetector) evaluateStringCondition(condition RuleCondition, value string) bool {
 	if value == "" {
-		return false
+		// For string-based operators, empty value rarely matches except explicit equals ""
+		if condition.Operator != "equals" && condition.Operator != "eq" && condition.Operator != "not_equals" && condition.Operator != "neq" && condition.Operator != "ne" {
+			return false
+		}
 	}
 
 	switch condition.Operator {
 	case "equals", "eq":
 		if strValue, ok := condition.Value.(string); ok {
 			return value == strValue
+		}
+	case "not_equals", "neq", "ne":
+		if strValue, ok := condition.Value.(string); ok {
+			return value != strValue
 		}
 	case "contains":
 		if strValue, ok := condition.Value.(string); ok {
@@ -359,6 +506,39 @@ func (d *GenericDetector) evaluateStringCondition(condition RuleCondition, value
 				return regex.MatchString(value)
 			}
 		}
+	case "in":
+		// Support list membership for strings
+		switch arr := condition.Value.(type) {
+		case []any:
+			for _, v := range arr {
+				if s, ok := v.(string); ok && s == value {
+					return true
+				}
+			}
+		case []string:
+			for _, s := range arr {
+				if s == value {
+					return true
+				}
+			}
+		}
+	case "not_in":
+		switch arr := condition.Value.(type) {
+		case []any:
+			for _, v := range arr {
+				if s, ok := v.(string); ok && s == value {
+					return false
+				}
+			}
+			return true
+		case []string:
+			for _, s := range arr {
+				if s == value {
+					return false
+				}
+			}
+			return true
+		}
 	case "length_greater_than":
 		if intValue, ok := condition.Value.(float64); ok {
 			return len(value) > int(intValue)
@@ -370,6 +550,83 @@ func (d *GenericDetector) evaluateStringCondition(condition RuleCondition, value
 	}
 
 	return false
+}
+
+// evaluateNumericCondition evaluates a condition against a numeric value
+func (d *GenericDetector) evaluateNumericCondition(condition RuleCondition, value float64) bool {
+	switch condition.Operator {
+	case "equals", "eq":
+		if v, ok := toFloat(condition.Value); ok {
+			return value == v
+		}
+	case "not_equals", "neq", "ne":
+		if v, ok := toFloat(condition.Value); ok {
+			return value != v
+		}
+	case "greater_than", "gt":
+		if v, ok := toFloat(condition.Value); ok {
+			return value > v
+		}
+	case "greater_than_or_equal", "gte":
+		if v, ok := toFloat(condition.Value); ok {
+			return value >= v
+		}
+	case "less_than", "lt":
+		if v, ok := toFloat(condition.Value); ok {
+			return value < v
+		}
+	case "less_than_or_equal", "lte":
+		if v, ok := toFloat(condition.Value); ok {
+			return value <= v
+		}
+	case "between", "range":
+		// Expect [min, max]
+		if arr, ok := condition.Value.([]any); ok && len(arr) == 2 {
+			if min, ok1 := toFloat(arr[0]); ok1 {
+				if max, ok2 := toFloat(arr[1]); ok2 {
+					return value >= min && value <= max
+				}
+			}
+		}
+	}
+	return false
+}
+
+// toFloat converts various numeric representations to float64
+func toFloat(v any) (float64, bool) {
+	switch t := v.(type) {
+	case float64:
+		return t, true
+	case float32:
+		return float64(t), true
+	case int:
+		return float64(t), true
+	case int64:
+		return float64(t), true
+	case int32:
+		return float64(t), true
+	case int16:
+		return float64(t), true
+	case int8:
+		return float64(t), true
+	case uint:
+		return float64(t), true
+	case uint64:
+		return float64(t), true
+	case uint32:
+		return float64(t), true
+	case uint16:
+		return float64(t), true
+	case uint8:
+		return float64(t), true
+	case string:
+		if f, err := strconv.ParseFloat(t, 64); err == nil {
+			return f, true
+		}
+		return 0, false
+	default:
+		return 0, false
+	}
 }
 
 // evaluateCustomCondition handles custom field evaluations

@@ -4,33 +4,33 @@
         "enabled": true,
         "priority": 100,
         "parameters": {
-            "default_duration": "5m",
-            "max_duration": "24h",
+            "default_duration": "30s",
+            "max_duration": "5m",
             "block_message": "Access denied due to security policy violation",
             "log_blocks": true,
             "escalation_rules": [
                 {
                     "violation_count": 1,
-                    "duration": "5m",
+                    "duration": "30s",
                     "permanent": false
                 },
                 {
                     "violation_count": 3,
-                    "duration": "30m",
+                    "duration": "1m",
                     "permanent": false
                 },
                 {
                     "violation_count": 5,
-                    "duration": "2h",
+                    "duration": "2m",
                     "permanent": false
                 },
                 {
                     "violation_count": 10,
-                    "duration": "24h",
+                    "duration": "5m",
                     "permanent": false
                 },
                 {
-                    "violation_count": 20,
+                    "violation_count": 50,
                     "duration": "0",
                     "permanent": true
                 }

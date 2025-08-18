@@ -1,0 +1,114 @@
+{
+    "detector": {
+        "name": "generic_detector",
+        "enabled": true,
+        "priority": 50,
+        "parameters": {
+            "rules": [
+                {
+                    "id": "business_hours_access",
+                    "name": "Out of Business Hours Access",
+                    "description": "Detects access attempts outside business hours (9 AM - 6 PM UTC)",
+                    "enabled": false,
+                    "type": "temporal",
+                    "severity": 4,
+                    "confidence": 0.6,
+                    "priority": 60,
+                    "conditions": [
+                        {
+                            "field": "path",
+                            "operator": "regex",
+                            "value": "(?i)/(admin|dashboard|management|control)"
+                        }
+                    ],
+                    "actions": [ "warning_action" ],
+                    "tags": [ "business_hours", "temporal_anomaly", "admin_access" ],
+                    "parameters": {
+                        "business_start_hour": 9,
+                        "business_end_hour": 18,
+                        "timezone": "UTC"
+                    }
+                },
+                {
+                    "id": "login_business_hours",
+                    "name": "Login Attempts Out of Business Hours",
+                    "description": "Detects login attempts outside business hours",
+                    "enabled": false,
+                    "type": "temporal",
+                    "severity": 5,
+                    "confidence": 0.7,
+                    "priority": 65,
+                    "conditions": [
+                        {
+                            "field": "path",
+                            "operator": "regex",
+                            "value": "(?i)/(login|signin|auth|authenticate)"
+                        }
+                    ],
+                    "actions": [ "warning_action" ],
+                    "tags": [ "business_hours", "authentication", "temporal_anomaly" ],
+                    "parameters": {
+                        "business_start_hour": 6,
+                        "business_end_hour": 22,
+                        "timezone": "UTC"
+                    }
+                },
+                {
+                    "id": "geolocation_anomaly",
+                    "name": "Login from Unexpected Region",
+                    "description": "Detects login attempts from unexpected geographical regions",
+                    "enabled": false,
+                    "type": "geolocation",
+                    "severity": 6,
+                    "confidence": 0.8,
+                    "priority": 70,
+                    "conditions": [
+                        {
+                            "logical": "and",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "regex",
+                                    "value": "(?i)/(login|signin|auth|authenticate)"
+                                },
+                                {
+                                    "field": "country",
+                                    "operator": "not_in",
+                                    "value": [ "US", "CA", "GB", "DE", "FR", "AU", "JP" ]
+                                }
+                            ]
+                        }
+                    ],
+                    "actions": [ "captcha_action" ],
+                    "tags": [ "geolocation", "authentication", "geographic_anomaly" ],
+                    "parameters": {
+                        "allowed_countries": [ "US", "CA", "GB", "DE", "FR", "AU", "JP" ],
+                        "block_high_risk_countries": true
+                    }
+                }
+            ]
+        }
+    },
+    "action_rules": [
+        {
+            "name": "Geolocation Challenge",
+            "description": "Challenge logins from unexpected regions",
+            "min_severity": 6,
+            "min_confidence": 0.7,
+            "actions": [ "captcha_action" ],
+            "threat_tags": [ "geolocation", "geographic_anomaly" ],
+            "priority": 85,
+            "enabled": true
+        },
+        {
+            "name": "Temporal Anomaly Warning",
+            "description": "Warn on access outside business hours",
+            "min_severity": 4,
+            "min_confidence": 0.6,
+            "actions": [ "warning_action" ],
+            "threat_tags": [ "temporal_anomaly", "business_hours" ],
+            "priority": 75,
+            "enabled": true
+        }
+    ]
+}

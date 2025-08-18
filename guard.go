@@ -117,6 +117,8 @@ func NewApplication(configSource string, opts ...Options) (*Application, error) 
 
 	// Create rule engine
 	ruleEngine := engine.NewRuleEngine(registry, eventBus, stateStore)
+	// Apply initial engine config from loaded configuration (ensures single-file and directory-based configs take effect at startup)
+	ruleEngine.UpdateConfig(cfg.Engine)
 
 	app := &Application{
 		enableTCPMiddleware:  true,
@@ -231,69 +233,16 @@ func (app *Application) GetConfig() *config.Manager {
 func (app *Application) registerBuiltinPlugins() error {
 	cfg := app.configManager.GetConfig()
 
-	// Register detector plugins
-	sqlDetector := detectors.NewSQLInjectionDetector()
-	if err := app.registry.RegisterDetector(
-		sqlDetector,
-		plugins.PluginMetadata{
-			Name:        sqlDetector.Name(),
-			Version:     sqlDetector.Version(),
-			Description: sqlDetector.Description(),
-			Type:        "detector",
-			Author:      "System",
-		},
-		cfg.Plugins.Detectors["sql_injection_detector"],
-	); err != nil {
-		return fmt.Errorf("failed to register SQL injection detector: %w", err)
-	}
-
-	xssDetector := detectors.NewXSSDetector()
-	if err := app.registry.RegisterDetector(
-		xssDetector,
-		plugins.PluginMetadata{
-			Name:        xssDetector.Name(),
-			Version:     xssDetector.Version(),
-			Description: xssDetector.Description(),
-			Type:        "detector",
-			Author:      "System",
-		},
-		cfg.Plugins.Detectors["xss_detector"],
-	); err != nil {
-		return fmt.Errorf("failed to register XSS detector: %w", err)
-	}
-
-	pathTraversalDetector := detectors.NewPathTraversalDetector()
-	if err := app.registry.RegisterDetector(
-		pathTraversalDetector,
-		plugins.PluginMetadata{
-			Name:        pathTraversalDetector.Name(),
-			Version:     pathTraversalDetector.Version(),
-			Description: pathTraversalDetector.Description(),
-			Type:        "detector",
-			Author:      "System",
-		},
-		cfg.Plugins.Detectors["path_traversal_detector"],
-	); err != nil {
-		return fmt.Errorf("failed to register path traversal detector: %w", err)
-	}
-
-	bruteForceDetector := detectors.NewBruteForceDetector(app.stateStore)
-	if err := app.registry.RegisterDetector(
-		bruteForceDetector,
-		plugins.PluginMetadata{
-			Name:        bruteForceDetector.Name(),
-			Version:     bruteForceDetector.Version(),
-			Description: bruteForceDetector.Description(),
-			Type:        "detector",
-			Author:      "System",
-		},
-		cfg.Plugins.Detectors["brute_force_detector"],
-	); err != nil {
-		return fmt.Errorf("failed to register brute force detector: %w", err)
-	}
-
-	// Register the generic configurable detector
+	// Register the generic configurable detector (replaces all specific detectors)
 	genericDetector := detectors.NewGenericDetector()
+
+	// Prepare configuration with state store
+	genericConfig := cfg.Plugins.Detectors["generic_detector"]
+	if genericConfig.Parameters == nil {
+		genericConfig.Parameters = make(map[string]any)
+	}
+	genericConfig.Parameters["state_store"] = app.stateStore
+
 	if err := app.registry.RegisterDetector(
 		genericDetector,
 		plugins.PluginMetadata{
@@ -303,70 +252,9 @@ func (app *Application) registerBuiltinPlugins() error {
 			Type:        "detector",
 			Author:      "System",
 		},
-		cfg.Plugins.Detectors["generic_detector"],
+		genericConfig,
 	); err != nil {
-		// Log the error but don't fail the initialization
-		log.Warn().Err(err).Msg("Failed to register generic detector, continuing without it")
-	}
-
-	suspiciousUADetector := detectors.NewSuspiciousUserAgentDetector()
-	if err := app.registry.RegisterDetector(
-		suspiciousUADetector,
-		plugins.PluginMetadata{
-			Name:        suspiciousUADetector.Name(),
-			Version:     suspiciousUADetector.Version(),
-			Description: suspiciousUADetector.Description(),
-			Type:        "detector",
-			Author:      "System",
-		},
-		cfg.Plugins.Detectors["suspicious_user_agent_detector"],
-	); err != nil {
-		return fmt.Errorf("failed to register suspicious user agent detector: %w", err)
-	}
-
-	geoLocationDetector := detectors.NewGeoLocationDetector()
-	if err := app.registry.RegisterDetector(
-		geoLocationDetector,
-		plugins.PluginMetadata{
-			Name:        geoLocationDetector.Name(),
-			Version:     geoLocationDetector.Version(),
-			Description: geoLocationDetector.Description(),
-			Type:        "detector",
-			Author:      "System",
-		},
-		cfg.Plugins.Detectors["geo_location_detector"],
-	); err != nil {
-		return fmt.Errorf("failed to register geo location detector: %w", err)
-	}
-
-	rateLimitDetector := detectors.NewRateLimitDetector(app.stateStore)
-	if err := app.registry.RegisterDetector(
-		rateLimitDetector,
-		plugins.PluginMetadata{
-			Name:        rateLimitDetector.Name(),
-			Version:     rateLimitDetector.Version(),
-			Description: rateLimitDetector.Description(),
-			Type:        "detector",
-			Author:      "System",
-		},
-		cfg.Plugins.Detectors["rate_limit_detector"],
-	); err != nil {
-		return fmt.Errorf("failed to register rate limit detector: %w", err)
-	}
-
-	multipleSignupDetector := detectors.NewMultipleSignupDetector(app.stateStore)
-	if err := app.registry.RegisterDetector(
-		multipleSignupDetector,
-		plugins.PluginMetadata{
-			Name:        multipleSignupDetector.Name(),
-			Version:     multipleSignupDetector.Version(),
-			Description: multipleSignupDetector.Description(),
-			Type:        "detector",
-			Author:      "System",
-		},
-		cfg.Plugins.Detectors["multiple_signup_detector"],
-	); err != nil {
-		return fmt.Errorf("failed to register multiple signup detector: %w", err)
+		return fmt.Errorf("failed to register generic detector: %w", err)
 	}
 
 	// Register action plugins
@@ -535,6 +423,7 @@ func (app *Application) ddosProtectionMiddleware() fiber.Handler {
 			Path:          c.Path(),
 			Headers:       make(map[string]string),
 			QueryParams:   c.Queries(),
+			Body:          string(c.Body()),
 			ContentLength: int64(len(c.Body())),
 			Timestamp:     time.Now(),
 			UserID:        c.Get("X-User-ID"),
@@ -978,7 +867,16 @@ func (app *Application) reloadPlugins(cfg *config.SystemConfig) error {
 	// Update detector configurations
 	for name, pluginConfig := range cfg.Plugins.Detectors {
 		if detector, exists := app.registry.GetDetector(name); exists {
-			if err := detector.Initialize(pluginConfig.Parameters); err != nil {
+			// Ensure state store is available for detectors that need it
+			params := pluginConfig.Parameters
+			if params == nil {
+				params = make(map[string]any)
+			}
+			if name == "generic_detector" {
+				params["state_store"] = app.stateStore
+			}
+
+			if err := detector.Initialize(params); err != nil {
 				log.Error().Str("detector", name).Err(err).Msg("Failed to reinitialize detector")
 			} else {
 				log.Info().Str("detector", name).Msg("Reloaded detector")

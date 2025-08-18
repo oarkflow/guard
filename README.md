@@ -1,6 +1,6 @@
-# DDoS Protection System v2.0 - Enhanced Architecture
+# Guard Security System - Comprehensive Web Application Protection
 
-A robust, plugin-based DDoS protection system with event-driven architecture and distributed state management.
+A robust, plugin-based security system with comprehensive threat detection, event-driven architecture, and distributed state management. Provides complete protection against DDoS attacks, injection attacks, authentication threats, and behavioral anomalies.
 
 ## 🏗️ Architecture Overview
 
@@ -73,16 +73,30 @@ The system has been completely re-architected with the following key improvement
 ### Running the Demo
 
 ```bash
-# Run the architecture demonstration
-go run example/demo.go
+# Start the comprehensive security demo
+./start-demo.sh
+
+# Or run directly
+go run demo/server.go
 ```
 
-This will demonstrate:
-- Plugin registration and initialization
-- Request processing through the rule engine
-- Event generation and handling
-- Rate limiting in action
-- System metrics and monitoring
+**Demo Features:**
+- **Interactive Web Interface** at http://localhost:8080
+- **33 Security Rules** across all threat categories
+- **Real-time Testing** of all security features
+- **Live Metrics Dashboard** with threat statistics
+- **Hot-reload Configuration** for rule adjustments
+
+**Available Tests:**
+- Authentication Security (bot detection, rate limiting, credential stuffing)
+- Injection Attack Detection (SQL injection, XSS, command injection)
+- Behavioral Security (DDoS, API abuse, data exfiltration)
+- Geolocation & Time-based Security
+- Real-time Security Metrics
+
+### Demo Guides
+- **Demo Usage**: See [`demo/README.md`](demo/README.md)
+- **Configuration**: See [`config/README.md`](config/README.md)
 
 ### Configuration
 
@@ -247,23 +261,48 @@ The system provides comprehensive metrics:
 
 ## 🔒 Security Features
 
-### Advanced Detection
-- **Multi-layer Detection**: Multiple detectors run in parallel
-- **Confidence Scoring**: Weighted threat assessment
-- **Pattern Learning**: Adaptive detection algorithms
-- **False Positive Reduction**: Smart filtering and validation
+### Comprehensive Threat Detection (33 Active Rules)
 
-### Response Actions
+#### Authentication Security (6 rules)
+- **Bot Login Detection**: Identifies automated login attempts
+- **Login Rate Limiting**: Prevents brute force attacks
+- **Multiple Account Detection**: Detects suspicious account usage patterns
+- **Credential Stuffing Protection**: Blocks common password attacks
+- **Business Hours Access Control**: Time-based access restrictions
+- **Geolocation Anomaly Detection**: Unusual location-based access
+
+#### Injection Attack Prevention (18 rules)
+- **SQL Injection Detection** (5 rules): Comprehensive SQL injection patterns
+- **XSS Protection** (6 rules): Cross-site scripting prevention
+- **Web Security Rules** (7 rules): General web attack patterns
+- **Command Injection Prevention**: System command execution blocking
+- **Path Traversal Protection**: Directory traversal attack prevention
+
+#### Behavioral Security (6 rules)
+- **DDoS Attack Detection**: Distributed denial of service protection
+- **API Abuse Monitoring**: Excessive API usage detection
+- **High-frequency Request Detection**: Rapid request pattern analysis
+- **Concurrent Session Limits**: Multiple session abuse prevention
+- **Geographic Inconsistency Detection**: Location-based anomalies
+- **Suspicious Activity Patterns**: Behavioral analysis
+
+#### Temporal & Geolocation (3 rules)
+- **Time-based Access Control**: Business hours enforcement
+- **Geographic Restrictions**: Location-based access control
+- **Location Anomaly Detection**: Unusual geographic patterns
+
+### Advanced Response Actions
 - **Graduated Response**: Escalating actions based on threat level
-- **Temporary/Permanent Blocking**: Flexible blocking strategies
-- **Rate Limiting**: Sophisticated throttling mechanisms
-- **Challenge Systems**: CAPTCHA and proof-of-work challenges
+- **IP Blocking**: Temporary and permanent blocking strategies
+- **Rate Limiting**: Sophisticated request throttling
+- **CAPTCHA Challenges**: Human verification systems
+- **Real-time Alerting**: Immediate threat notifications
 
-### Event Tracking
-- **Comprehensive Logging**: All security events are logged
-- **Real-time Alerting**: Immediate notification of threats
-- **Audit Trail**: Complete forensic logging
-- **Compliance Support**: Structured logging for compliance
+### Monitoring & Analytics
+- **Live Security Dashboard**: Real-time threat visualization
+- **Comprehensive Metrics**: Detailed security statistics
+- **Event Tracking**: Complete audit trail
+- **Performance Monitoring**: System health and performance metrics
 
 ## 🚀 Performance
 

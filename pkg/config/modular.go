@@ -491,6 +491,10 @@ func (m *MultiFileLoader) loadDetectorRules(config *SystemConfig) error {
 		return fmt.Errorf("failed to glob detector files: %w", err)
 	}
 
+	// Track merged rules for generic detector
+	var mergedGenericRules []interface{}
+	var genericDetectorConfig *DetectorConfig
+
 	for _, file := range files {
 		var detectorRule DetectorRuleConfig
 		if err := m.loadJSONFile(file, &detectorRule); err != nil {
@@ -498,24 +502,63 @@ func (m *MultiFileLoader) loadDetectorRules(config *SystemConfig) error {
 			continue
 		}
 
-		// Add detector to plugins config
+		// Get detector name
 		detectorName := detectorRule.Detector.Name
 		if detectorName == "" {
 			detectorName = m.getNameFromFile(file)
 		}
 
-		// Convert DetectorConfig to plugins.PluginConfig
-		pluginConfig := plugins.PluginConfig{
-			Enabled:    detectorRule.Detector.Enabled,
-			Priority:   detectorRule.Detector.Priority,
-			Parameters: detectorRule.Detector.Parameters,
+		// Handle generic detector specially - merge all rules
+		if detectorName == "generic_detector" {
+			// Store the detector config (use the first one found)
+			if genericDetectorConfig == nil {
+				genericDetectorConfig = &detectorRule.Detector
+			}
+
+			// Extract rules from parameters and merge them
+			if rules, ok := detectorRule.Detector.Parameters["rules"].([]interface{}); ok {
+				mergedGenericRules = append(mergedGenericRules, rules...)
+				log.Debug().Str("file", file).Int("rules_count", len(rules)).Msg("Merged generic detector rules")
+			}
+		} else {
+			// Handle other detectors normally
+			pluginConfig := plugins.PluginConfig{
+				Enabled:    detectorRule.Detector.Enabled,
+				Priority:   detectorRule.Detector.Priority,
+				Parameters: detectorRule.Detector.Parameters,
+			}
+			config.Plugins.Detectors[detectorName] = pluginConfig
+			log.Debug().Str("detector", detectorName).Str("file", file).Msg("Loaded detector rules")
 		}
-		config.Plugins.Detectors[detectorName] = pluginConfig
 
 		// Add action rules to engine config
 		config.Engine.ActionRules = append(config.Engine.ActionRules, detectorRule.ActionRules...)
+	}
 
-		log.Debug().Str("detector", detectorName).Str("file", file).Msg("Loaded detector rules")
+	// Create merged generic detector configuration
+	if genericDetectorConfig != nil && len(mergedGenericRules) > 0 {
+		// Create merged parameters with all rules
+		mergedParameters := make(map[string]any)
+		if genericDetectorConfig.Parameters != nil {
+			// Copy existing parameters
+			for k, v := range genericDetectorConfig.Parameters {
+				if k != "rules" { // Don't copy individual rules
+					mergedParameters[k] = v
+				}
+			}
+		}
+		// Add merged rules
+		mergedParameters["rules"] = mergedGenericRules
+
+		// Create the merged plugin config
+		pluginConfig := plugins.PluginConfig{
+			Enabled:    genericDetectorConfig.Enabled,
+			Priority:   genericDetectorConfig.Priority,
+			Parameters: mergedParameters,
+		}
+		config.Plugins.Detectors["generic_detector"] = pluginConfig
+
+		log.Info().Int("total_rules", len(mergedGenericRules)).Msg("Created merged generic detector configuration")
 	}
 
 	return nil

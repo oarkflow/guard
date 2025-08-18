@@ -1,0 +1,206 @@
+{
+    "detector": {
+        "name": "generic_detector",
+        "enabled": true,
+        "priority": 50,
+        "parameters": {
+            "rules": [
+                {
+                    "id": "admin_path_access",
+                    "name": "Admin Path Access",
+                    "description": "Blocks access to admin paths without proper authentication",
+                    "enabled": true,
+                    "type": "path",
+                    "severity": 6,
+                    "confidence": 0.9,
+                    "priority": 80,
+                    "conditions": [
+                        {
+                            "field": "path",
+                            "operator": "starts_with",
+                            "value": "/admin"
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "unauthorized_access", "admin_panel" ]
+                },
+                {
+                    "id": "path_traversal",
+                    "name": "Path Traversal Attack",
+                    "description": "Detects path traversal attempts",
+                    "enabled": true,
+                    "type": "pattern",
+                    "severity": 7,
+                    "confidence": 0.8,
+                    "priority": 85,
+                    "conditions": [
+                        {
+                            "field": "path",
+                            "operator": "regex",
+                            "value": "(?i)(\\.\\./|\\.\\.\\\\|%2e%2e%2f|%2e%2e%5c)"
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "path_traversal", "web_attack", "file_access" ]
+                },
+                {
+                    "id": "body_path_traversal",
+                    "name": "Body Path Traversal Detection",
+                    "description": "Detects path traversal patterns in request body content",
+                    "enabled": true,
+                    "type": "pattern",
+                    "severity": 7,
+                    "confidence": 0.8,
+                    "priority": 85,
+                    "conditions": [
+                        {
+                            "field": "body",
+                            "operator": "regex",
+                            "value": "(?i)(\\.\\./|\\.\\.\\\\|%2e%2e%2f|%2e%2e%5c)"
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "path_traversal", "body", "web_attack", "file_access" ]
+                },
+                {
+                    "id": "sensitive_file_access",
+                    "name": "Sensitive File Access",
+                    "description": "Blocks access to sensitive files",
+                    "enabled": true,
+                    "type": "pattern",
+                    "severity": 8,
+                    "confidence": 0.9,
+                    "priority": 90,
+                    "conditions": [
+                        {
+                            "field": "path",
+                            "operator": "regex",
+                            "value": "(?i)\\.(env|config|ini|conf|log|bak|backup|sql|db)$"
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "sensitive_file", "information_disclosure", "file_access" ]
+                },
+                {
+                    "id": "command_injection",
+                    "name": "Command Injection",
+                    "description": "Detects command injection attempts",
+                    "enabled": true,
+                    "type": "pattern",
+                    "severity": 9,
+                    "confidence": 0.8,
+                    "priority": 95,
+                    "conditions": [
+                        {
+                            "field": "path",
+                            "operator": "regex",
+                            "value": "(?i)(;|\\||&|`|\\$\\(|\\${)"
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "command_injection", "web_attack", "injection", "rce" ]
+                },
+                {
+                    "id": "body_command_injection",
+                    "name": "Body Command Injection Detection",
+                    "description": "Detects command injection patterns in request body content",
+                    "enabled": true,
+                    "type": "pattern",
+                    "severity": 9,
+                    "confidence": 0.8,
+                    "priority": 95,
+                    "conditions": [
+                        {
+                            "field": "body",
+                            "operator": "regex",
+                            "value": "(?i)(;\\s*(rm|cat|ls|ps|kill|wget|curl)|\\|\\s*(rm|cat|ls|ps|kill)|`.*`|\\$\\(.*\\))"
+                        }
+                    ],
+                    "actions": [ "block_action" ],
+                    "tags": [ "command_injection", "body", "web_attack", "injection", "rce" ]
+                },
+                {
+                    "id": "body_sensitive_data",
+                    "name": "Body Sensitive Data Detection",
+                    "description": "Detects potential sensitive data patterns in request body",
+                    "enabled": true,
+                    "type": "pattern",
+                    "severity": 6,
+                    "confidence": 0.7,
+                    "priority": 70,
+                    "conditions": [
+                        {
+                            "field": "body",
+                            "operator": "regex",
+                            "value": "(?i)(password|passwd|secret|token|api_key|private_key)\\s*[=:]\\s*[\"']?[a-zA-Z0-9+/=]{8,}"
+                        }
+                    ],
+                    "actions": [ "warning_action" ],
+                    "tags": [ "sensitive_data", "body", "data_leak", "credentials" ]
+                }
+            ]
+        }
+    },
+    "action_rules": [
+        {
+            "name": "Critical Command Injection Block",
+            "description": "Block command injection attempts immediately",
+            "min_severity": 9,
+            "min_confidence": 0.8,
+            "actions": [ "block_action" ],
+            "threat_tags": [ "command_injection", "rce" ],
+            "priority": 100,
+            "enabled": true
+        },
+        {
+            "name": "Path Traversal Block",
+            "description": "Block path traversal attempts",
+            "min_severity": 1,
+            "min_confidence": 0.7,
+            "actions": [ "block_action" ],
+            "threat_tags": [ "path_traversal" ],
+            "priority": 90,
+            "enabled": true
+        },
+        {
+            "name": "Sensitive File Block",
+            "description": "Block access to sensitive files",
+            "min_severity": 1,
+            "min_confidence": 0.8,
+            "actions": [ "block_action" ],
+            "threat_tags": [ "sensitive_file" ],
+            "priority": 92,
+            "enabled": true
+        },
+        {
+            "name": "Body-based Attack Block",
+            "description": "Block attacks detected in request body",
+            "min_severity": 7,
+            "min_confidence": 0.8,
+            "actions": [ "block_action" ],
+            "threat_tags": [ "body" ],
+            "priority": 95,
+            "enabled": true
+        },
+        {
+            "name": "Sensitive Data Warning",
+            "description": "Warn when sensitive data patterns are detected in body",
+            "min_severity": 1,
+            "min_confidence": 0.6,
+            "actions": [ "warning_action" ],
+            "threat_tags": [ "sensitive_data", "data_leak" ],
+            "priority": 70,
+            "enabled": true
+        },
+        {
+            "name": "Unauthorized Access Block",
+            "description": "Block unauthorized access attempts",
+            "min_severity": 6,
+            "min_confidence": 0.8,
+            "actions": [ "block_action" ],
+            "threat_tags": [ "unauthorized_access" ],
+            "priority": 85,
+            "enabled": true
+        }
+    ]
+}

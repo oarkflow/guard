@@ -13,6 +13,7 @@ type RequestContext struct {
 	Path          string
 	Headers       map[string]string
 	QueryParams   map[string]string
+	Body          string // Request body content as string
 	ContentLength int64
 	Country       string
 	ASN           string
