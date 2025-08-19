@@ -113,7 +113,9 @@ func (d *GenericDetector) Detect(ctx context.Context, reqCtx *plugins.RequestCon
 
 	d.metrics.totalChecks++
 
-	// Process each rule
+	var matchedRules []GenericRule
+
+	// Process each rule and collect all matches
 	for _, rule := range rules {
 		if !rule.Enabled {
 			continue
@@ -121,31 +123,44 @@ func (d *GenericDetector) Detect(ctx context.Context, reqCtx *plugins.RequestCon
 
 		// Check if rule conditions are met
 		if d.evaluateRule(rule, reqCtx) {
-			d.metrics.threatsFound++
-
-			return plugins.DetectionResult{
-				Threat:     true,
-				Confidence: rule.Confidence,
-				Details:    fmt.Sprintf("Rule '%s' matched: %s", rule.Name, rule.Description),
-				Severity:   rule.Severity,
-				Tags:       rule.Tags,
-				Metadata: map[string]any{
-					"rule_id":   rule.ID,
-					"rule_name": rule.Name,
-					"rule_type": rule.Type,
-					"metadata":  rule.Metadata,
-				},
-			}
+			matchedRules = append(matchedRules, rule)
 		}
 	}
 
+	// If no rules matched, return no threat
+	if len(matchedRules) == 0 {
+		return plugins.DetectionResult{
+			Threat:     false,
+			Confidence: 0,
+			Details:    "No rules matched",
+			Severity:   0,
+			Tags:       []string{},
+			Metadata:   map[string]any{},
+		}
+	}
+
+	// Find the highest priority rule (highest priority number wins)
+	highestPriorityRule := matchedRules[0]
+	for _, rule := range matchedRules[1:] {
+		if rule.Priority > highestPriorityRule.Priority {
+			highestPriorityRule = rule
+		}
+	}
+
+	d.metrics.threatsFound++
+
 	return plugins.DetectionResult{
-		Threat:     false,
-		Confidence: 0,
-		Details:    "No rules matched",
-		Severity:   0,
-		Tags:       []string{},
-		Metadata:   map[string]any{},
+		Threat:     true,
+		Confidence: highestPriorityRule.Confidence,
+		Details:    fmt.Sprintf("Rule '%s' matched: %s", highestPriorityRule.Name, highestPriorityRule.Description),
+		Severity:   highestPriorityRule.Severity,
+		Tags:       highestPriorityRule.Tags,
+		Metadata: map[string]any{
+			"rule_id":   highestPriorityRule.ID,
+			"rule_name": highestPriorityRule.Name,
+			"rule_type": highestPriorityRule.Type,
+			"metadata":  highestPriorityRule.Metadata,
+		},
 	}
 }
 
