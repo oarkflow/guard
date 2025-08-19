@@ -267,90 +267,9 @@ func (d *GenericDetector) evaluateCondition(condition RuleCondition, reqCtx *plu
 			}
 		}
 	} else {
-		// Evaluate simple condition
-		switch condition.Field {
-		case "path":
-			// Check both path and query parameters for path-based patterns
-			testString := reqCtx.Path
-			// Also check query parameters for path-based attacks
-			for _, v := range reqCtx.QueryParams {
-				testString += " " + v
-			}
-			result = d.evaluateStringCondition(condition, testString)
-		case "method":
-			result = d.evaluateStringCondition(condition, reqCtx.Method)
-		case "ip":
-			result = d.evaluateStringCondition(condition, reqCtx.IP)
-		case "user_agent":
-			ua := reqCtx.UserAgent
-			if ua == "" {
-				ua = reqCtx.Headers["User-Agent"]
-			}
-			result = d.evaluateStringCondition(condition, ua)
-		case "country":
-			result = d.evaluateStringCondition(condition, reqCtx.Country)
-		case "asn":
-			result = d.evaluateStringCondition(condition, reqCtx.ASN)
-		case "content_length":
-			result = d.evaluateNumericCondition(condition, float64(reqCtx.ContentLength))
-		case "header":
-			// Prefer explicit key, else support matching any header value
-			if condition.Key != "" {
-				if headerValue, exists := reqCtx.Headers[condition.Key]; exists {
-					result = d.evaluateStringCondition(condition, headerValue)
-				}
-			} else {
-				// Legacy: support {"name":"Header","value":"expected"} OR scan all headers for value
-				switch v := condition.Value.(type) {
-				case string:
-					for _, hv := range reqCtx.Headers {
-						if d.evaluateStringCondition(RuleCondition{Operator: condition.Operator, Value: v}, hv) {
-							result = true
-							break
-						}
-					}
-				case map[string]any:
-					if name, ok := v["name"].(string); ok {
-						if hv, exists := reqCtx.Headers[name]; exists {
-							if expected, ok := v["value"].(string); ok {
-								result = d.evaluateStringCondition(RuleCondition{Operator: condition.Operator, Value: expected}, hv)
-							}
-						}
-					}
-				}
-			}
-		case "query_param":
-			// Prefer explicit key, else support matching any param value
-			if condition.Key != "" {
-				if pv, exists := reqCtx.QueryParams[condition.Key]; exists {
-					result = d.evaluateStringCondition(condition, pv)
-				}
-			} else {
-				switch v := condition.Value.(type) {
-				case string:
-					for _, pv := range reqCtx.QueryParams {
-						if d.evaluateStringCondition(RuleCondition{Operator: condition.Operator, Value: v}, pv) {
-							result = true
-							break
-						}
-					}
-				case map[string]any:
-					if name, ok := v["name"].(string); ok {
-						if pv, exists := reqCtx.QueryParams[name]; exists {
-							if expected, ok := v["value"].(string); ok {
-								result = d.evaluateStringCondition(RuleCondition{Operator: condition.Operator, Value: expected}, pv)
-							}
-						}
-					}
-				}
-			}
-		case "body":
-			// Evaluate request body content
-			result = d.evaluateStringCondition(condition, reqCtx.Body)
-		default:
-			// Custom field handling (metadata and others)
-			result = d.evaluateCustomCondition(condition, reqCtx)
-		}
+		// Build data map for filter evaluation
+		data := d.buildDataMap(reqCtx)
+		result = d.match(condition, data)
 	}
 
 	// Apply negation if needed
@@ -361,27 +280,79 @@ func (d *GenericDetector) evaluateCondition(condition RuleCondition, reqCtx *plu
 	return result
 }
 
-// evaluateStringCondition evaluates a condition against a string value
-func (d *GenericDetector) evaluateStringCondition(condition RuleCondition, value string) bool {
-	return d.match(condition, map[string]any{
-		condition.Field: value,
-	})
+// buildDataMap creates a comprehensive data map from RequestContext for filter evaluation
+func (d *GenericDetector) buildDataMap(reqCtx *plugins.RequestContext) map[string]any {
+	// Start with country from RequestContext
+	country := reqCtx.Country
+
+	// Override with X-Country header if present (for testing)
+	if xCountry, exists := reqCtx.Headers["X-Country"]; exists {
+		country = xCountry
+	}
+
+	data := map[string]any{
+		"ip":             reqCtx.IP,
+		"user_agent":     reqCtx.UserAgent,
+		"method":         reqCtx.Method,
+		"path":           reqCtx.Path,
+		"content_length": reqCtx.ContentLength,
+		"country":        country,
+		"asn":            reqCtx.ASN,
+		"user_id":        reqCtx.UserID,
+		"session_id":     reqCtx.SessionID,
+		"timestamp":      reqCtx.Timestamp,
+	}
+
+	// Add headers with proper field names
+	for key, value := range reqCtx.Headers {
+		data["header."+key] = value
+	}
+
+	// Add query parameters with proper field names
+	for key, value := range reqCtx.QueryParams {
+		data["query."+key] = value
+	}
+
+	// Handle body based on its type
+	if reqCtx.Body != nil {
+		switch body := reqCtx.Body.(type) {
+		case string:
+			data["body"] = body
+		case map[string]any:
+			// Add body fields with proper field names
+			for key, value := range body {
+				data["body."+key] = value
+			}
+			data["body"] = body
+		case []map[string]any:
+			data["body"] = body
+			// For arrays, we can add indexed access if needed
+			for i, item := range body {
+				for key, value := range item {
+					data[fmt.Sprintf("body[%d].%s", i, key)] = value
+				}
+			}
+		default:
+			data["body"] = body
+		}
+	}
+
+	// Add metadata
+	for key, value := range reqCtx.Metadata {
+		data["metadata."+key] = value
+	}
+
+	return data
 }
 
-// evaluateNumericCondition evaluates a condition against a numeric value
-func (d *GenericDetector) evaluateNumericCondition(condition RuleCondition, value float64) bool {
-	return d.match(condition, map[string]any{
-		condition.Field: value,
-	})
-}
+func (d *GenericDetector) match(condition RuleCondition, data map[string]any) bool {
+	// Handle specific field access with key
+	fieldName := condition.Field
+	if condition.Key != "" {
+		fieldName = condition.Field + "." + condition.Key
+	}
 
-// evaluateCustomCondition handles custom field evaluations
-func (d *GenericDetector) evaluateCustomCondition(condition RuleCondition, reqCtx *plugins.RequestContext) bool {
-	return d.match(condition, reqCtx.Metadata)
-}
-
-func (d *GenericDetector) match(condition RuleCondition, data any) bool {
-	filter := filters.NewFilter(condition.Field, filters.Operator(condition.Operator), condition.Value)
+	filter := filters.NewFilter(fieldName, filters.Operator(condition.Operator), condition.Value)
 	return filter.Match(data)
 }
 

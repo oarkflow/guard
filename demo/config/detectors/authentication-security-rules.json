@@ -53,9 +53,9 @@
                     "actions": [ "incremental_block_action" ],
                     "tags": [ "rate_limit", "authentication", "brute_force" ],
                     "parameters": {
-                        "window_seconds": 300,
-                        "max_attempts": 5,
-                        "block_duration": 900
+                        "window_seconds": 60,
+                        "max_requests": 3,
+                        "block_duration": 300
                     }
                 },
                 {
@@ -77,9 +77,25 @@
                                     "value": "(?i)/(login|signin|auth|authenticate)"
                                 },
                                 {
-                                    "field": "body",
-                                    "operator": "pattern",
-                                    "value": "(?i)(username|email|user|login)"
+                                    "logical": "or",
+                                    "children": [
+                                        {
+                                            "field": "body.username",
+                                            "operator": "nnull"
+                                        },
+                                        {
+                                            "field": "body.email",
+                                            "operator": "nnull"
+                                        },
+                                        {
+                                            "field": "body.user",
+                                            "operator": "nnull"
+                                        },
+                                        {
+                                            "field": "body.login",
+                                            "operator": "nnull"
+                                        }
+                                    ]
                                 }
                             ]
                         }
@@ -111,7 +127,7 @@
                                 },
                                 {
                                     "field": "method",
-                                    "operator": "equals",
+                                    "operator": "eq",
                                     "value": "POST"
                                 }
                             ]
@@ -143,9 +159,19 @@
                                     "value": "(?i)/(login|signin|auth|authenticate)"
                                 },
                                 {
-                                    "field": "body",
-                                    "operator": "pattern",
-                                    "value": "(?i)(password|passwd).*[=:].*[\"']?(123456|password|admin|qwerty|letmein|welcome|monkey|dragon)[\"']?"
+                                    "logical": "or",
+                                    "children": [
+                                        {
+                                            "field": "body.password",
+                                            "operator": "in",
+                                            "value": [ "123456", "password", "admin", "qwerty", "letmein", "welcome", "monkey", "dragon" ]
+                                        },
+                                        {
+                                            "field": "body.passwd",
+                                            "operator": "in",
+                                            "value": [ "123456", "password", "admin", "qwerty", "letmein", "welcome", "monkey", "dragon" ]
+                                        }
+                                    ]
                                 }
                             ]
                         }
@@ -165,8 +191,8 @@
                     "conditions": [
                         {
                             "field": "user_agent",
-                            "operator": "pattern",
-                            "value": "(?i)bot"
+                            "operator": "contains",
+                            "value": "bot"
                         }
                     ],
                     "actions": [ "warning_action" ],

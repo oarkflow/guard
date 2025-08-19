@@ -8,6 +8,8 @@
             "max_duration": "5m",
             "block_message": "Access denied due to security policy violation",
             "log_blocks": true,
+            "endpoint_specific": true,
+            "global_block_severity": 9,
             "escalation_rules": [
                 {
                     "violation_count": 1,

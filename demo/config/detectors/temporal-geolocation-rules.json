@@ -16,9 +16,29 @@
                     "priority": 60,
                     "conditions": [
                         {
-                            "field": "path",
-                            "operator": "pattern",
-                            "value": "(?i)/(admin|dashboard|management|control)"
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "/admin"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "/dashboard"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "/management"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "/control"
+                                }
+                            ]
                         }
                     ],
                     "actions": [ "warning_action" ],
@@ -40,9 +60,29 @@
                     "priority": 65,
                     "conditions": [
                         {
-                            "field": "path",
-                            "operator": "pattern",
-                            "value": "(?i)/(login|signin|auth|authenticate)"
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "/login"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "/signin"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "/auth"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "/authenticate"
+                                }
+                            ]
                         }
                     ],
                     "actions": [ "warning_action" ],
@@ -67,9 +107,29 @@
                             "logical": "and",
                             "children": [
                                 {
-                                    "field": "path",
-                                    "operator": "pattern",
-                                    "value": "(?i)/(login|signin|auth|authenticate)"
+                                    "logical": "or",
+                                    "children": [
+                                        {
+                                            "field": "path",
+                                            "operator": "contains",
+                                            "value": "/login"
+                                        },
+                                        {
+                                            "field": "path",
+                                            "operator": "contains",
+                                            "value": "/signin"
+                                        },
+                                        {
+                                            "field": "path",
+                                            "operator": "contains",
+                                            "value": "/auth"
+                                        },
+                                        {
+                                            "field": "path",
+                                            "operator": "contains",
+                                            "value": "/authenticate"
+                                        }
+                                    ]
                                 },
                                 {
                                     "field": "country",

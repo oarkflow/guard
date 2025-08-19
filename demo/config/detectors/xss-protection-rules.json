@@ -17,8 +17,8 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "pattern",
-                            "value": "(?i)<\\s*script[^>]*>"
+                            "operator": "contains",
+                            "value": "<script"
                         }
                     ],
                     "actions": [ "block_action" ],
@@ -36,8 +36,8 @@
                     "conditions": [
                         {
                             "field": "path",
-                            "operator": "pattern",
-                            "value": "(?i)javascript\\s*:"
+                            "operator": "contains",
+                            "value": "javascript:"
                         }
                     ],
                     "actions": [ "block_action" ],
@@ -54,9 +54,29 @@
                     "priority": 85,
                     "conditions": [
                         {
-                            "field": "path",
-                            "operator": "pattern",
-                            "value": "(?i)on\\w+\\s*="
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "onload="
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "onerror="
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "onclick="
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "onmouseover="
+                                }
+                            ]
                         }
                     ],
                     "actions": [ "block_action" ],
@@ -73,9 +93,24 @@
                     "priority": 88,
                     "conditions": [
                         {
-                            "field": "path",
-                            "operator": "pattern",
-                            "value": "(?i)<\\s*(iframe|object|embed)[^>]*>"
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "<iframe"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "<object"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "<embed"
+                                }
+                            ]
                         }
                     ],
                     "actions": [ "block_action" ],
@@ -92,9 +127,29 @@
                     "priority": 80,
                     "conditions": [
                         {
-                            "field": "path",
-                            "operator": "pattern",
-                            "value": "(?i)(eval|alert|confirm|prompt)\\s*\\("
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "eval("
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "alert("
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "confirm("
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "prompt("
+                                }
+                            ]
                         }
                     ],
                     "actions": [ "block_action" ],
@@ -111,9 +166,29 @@
                     "priority": 95,
                     "conditions": [
                         {
-                            "field": "body",
-                            "operator": "pattern",
-                            "value": "(?i)<script[^>]*>.*?</script>|javascript:|on\\w+\\s*=|<\\s*(iframe|object|embed)[^>]*>"
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "body",
+                                    "operator": "contains",
+                                    "value": "<script"
+                                },
+                                {
+                                    "field": "body",
+                                    "operator": "contains",
+                                    "value": "javascript:"
+                                },
+                                {
+                                    "field": "body",
+                                    "operator": "contains",
+                                    "value": "onload="
+                                },
+                                {
+                                    "field": "body",
+                                    "operator": "contains",
+                                    "value": "<iframe"
+                                }
+                            ]
                         }
                     ],
                     "actions": [ "block_action" ],

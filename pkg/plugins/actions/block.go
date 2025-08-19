@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,11 +29,13 @@ type BlockAction struct {
 
 // BlockConfig holds configuration for blocking action
 type BlockConfig struct {
-	DefaultDuration time.Duration    `json:"default_duration"`
-	MaxDuration     time.Duration    `json:"max_duration"`
-	EscalationRules []EscalationRule `json:"escalation_rules"`
-	BlockMessage    string           `json:"block_message"`
-	LogBlocks       bool             `json:"log_blocks"`
+	DefaultDuration     time.Duration    `json:"default_duration"`
+	MaxDuration         time.Duration    `json:"max_duration"`
+	EscalationRules     []EscalationRule `json:"escalation_rules"`
+	BlockMessage        string           `json:"block_message"`
+	LogBlocks           bool             `json:"log_blocks"`
+	EndpointSpecific    bool             `json:"endpoint_specific"`     // Enable endpoint-specific blocking
+	GlobalBlockSeverity int              `json:"global_block_severity"` // Severity threshold for global blocks
 }
 
 // EscalationRule defines how to escalate blocking based on violations
@@ -50,10 +53,12 @@ func NewBlockAction(stateStore store.StateStore) *BlockAction {
 		description: "Blocks requests from malicious sources with escalation",
 		store:       stateStore,
 		config: BlockConfig{
-			DefaultDuration: 5 * time.Minute,
-			MaxDuration:     24 * time.Hour,
-			BlockMessage:    "Access denied due to security policy violation",
-			LogBlocks:       true,
+			DefaultDuration:     5 * time.Minute,
+			MaxDuration:         24 * time.Hour,
+			BlockMessage:        "Access denied due to security policy violation",
+			LogBlocks:           true,
+			EndpointSpecific:    true, // Default to endpoint-specific blocking
+			GlobalBlockSeverity: 9,    // Only severity 9+ triggers global blocks
 			EscalationRules: []EscalationRule{
 				{ViolationCount: 1, Duration: 5 * time.Minute, Permanent: false},
 				{ViolationCount: 3, Duration: 30 * time.Minute, Permanent: false},
@@ -109,7 +114,58 @@ func (a *BlockAction) Initialize(config map[string]any) error {
 		a.config.LogBlocks = logBlocks
 	}
 
+	// Parse endpoint specific setting
+	if endpointSpecific, ok := config["endpoint_specific"].(bool); ok {
+		a.config.EndpointSpecific = endpointSpecific
+	}
+
+	// Parse global block severity threshold
+	if globalBlockSeverity, ok := config["global_block_severity"].(float64); ok {
+		a.config.GlobalBlockSeverity = int(globalBlockSeverity)
+	} else if globalBlockSeverity, ok := config["global_block_severity"].(int); ok {
+		a.config.GlobalBlockSeverity = globalBlockSeverity
+	}
+
 	return nil
+}
+
+// generateBlockKey creates the appropriate block key based on configuration
+func (a *BlockAction) generateBlockKey(ip, path string, severity int) string {
+	a.mu.RLock()
+	config := a.config
+	a.mu.RUnlock()
+
+	// Use global blocking for high severity threats or if endpoint-specific is disabled
+	if !config.EndpointSpecific || severity >= config.GlobalBlockSeverity {
+		return fmt.Sprintf("block:%s", ip)
+	}
+
+	// Use endpoint-specific blocking for lower severity threats
+	// Normalize path to avoid issues with query parameters
+	normalizedPath := path
+	if idx := strings.Index(path, "?"); idx != -1 {
+		normalizedPath = path[:idx]
+	}
+	return fmt.Sprintf("block:%s:%s", ip, normalizedPath)
+}
+
+// generateViolationKey creates the appropriate violation key
+func (a *BlockAction) generateViolationKey(ip, path string, severity int) string {
+	a.mu.RLock()
+	config := a.config
+	a.mu.RUnlock()
+
+	// Use global violation tracking for high severity threats or if endpoint-specific is disabled
+	if !config.EndpointSpecific || severity >= config.GlobalBlockSeverity {
+		return fmt.Sprintf("violations:%s", ip)
+	}
+
+	// Use endpoint-specific violation tracking
+	normalizedPath := path
+	if idx := strings.Index(path, "?"); idx != -1 {
+		normalizedPath = path[:idx]
+	}
+	return fmt.Sprintf("violations:%s:%s", ip, normalizedPath)
 }
 
 // Execute executes the block action
@@ -120,9 +176,9 @@ func (a *BlockAction) Execute(ctx context.Context, reqCtx *plugins.RequestContex
 
 	a.metrics.totalBlocks++
 
-	// Generate block key
-	blockKey := fmt.Sprintf("block:%s", reqCtx.IP)
-	violationKey := fmt.Sprintf("violations:%s", reqCtx.IP)
+	// Generate block and violation keys based on configuration
+	blockKey := a.generateBlockKey(reqCtx.IP, reqCtx.Path, result.Severity)
+	violationKey := a.generateViolationKey(reqCtx.IP, reqCtx.Path, result.Severity)
 
 	// Get current violation count with proper TTL handling
 	violationCount, err := a.store.IncrementWithTTL(ctx, violationKey, 1, 24*time.Hour)
@@ -181,20 +237,43 @@ func (a *BlockAction) Execute(ctx context.Context, reqCtx *plugins.RequestContex
 	return nil
 }
 
-// IsBlocked checks if an IP is currently blocked
+// IsBlocked checks if an IP is currently blocked (for backward compatibility)
 func (a *BlockAction) IsBlocked(ctx context.Context, ip string) (bool, map[string]any, error) {
-	blockKey := fmt.Sprintf("block:%s", ip)
+	return a.IsBlockedForPath(ctx, ip, "")
+}
 
-	blockInfo, err := a.store.Get(ctx, blockKey)
-	if err != nil {
-		return false, nil, nil // Not blocked if key doesn't exist
+// IsBlockedForPath checks if an IP is blocked for a specific path
+func (a *BlockAction) IsBlockedForPath(ctx context.Context, ip, path string) (bool, map[string]any, error) {
+	a.mu.RLock()
+	config := a.config
+	a.mu.RUnlock()
+
+	// Always check for global blocks first
+	globalBlockKey := fmt.Sprintf("block:%s", ip)
+	if blockInfo, err := a.store.Get(ctx, globalBlockKey); err == nil {
+		if info, ok := blockInfo.(map[string]any); ok {
+			return true, info, nil
+		}
+		return true, map[string]any{"reason": "blocked"}, nil
 	}
 
-	if info, ok := blockInfo.(map[string]any); ok {
-		return true, info, nil
+	// If endpoint-specific blocking is enabled and path is provided, check endpoint-specific blocks
+	if config.EndpointSpecific && path != "" {
+		normalizedPath := path
+		if idx := strings.Index(path, "?"); idx != -1 {
+			normalizedPath = path[:idx]
+		}
+		endpointBlockKey := fmt.Sprintf("block:%s:%s", ip, normalizedPath)
+
+		if blockInfo, err := a.store.Get(ctx, endpointBlockKey); err == nil {
+			if info, ok := blockInfo.(map[string]any); ok {
+				return true, info, nil
+			}
+			return true, map[string]any{"reason": "blocked"}, nil
+		}
 	}
 
-	return true, map[string]any{"reason": "blocked"}, nil
+	return false, nil, nil
 }
 
 // GetDetailedBlockInfo returns detailed information about a block including retry time

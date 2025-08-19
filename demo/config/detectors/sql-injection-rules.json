@@ -16,9 +16,39 @@
                     "priority": 100,
                     "conditions": [
                         {
-                            "field": "path",
-                            "operator": "pattern",
-                            "value": "(?i)(union\\s+select|select\\s+.*\\s+from|insert\\s+into|delete\\s+from|drop\\s+table|create\\s+table)"
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "union select"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "select"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "insert into"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "delete from"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "drop table"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "create table"
+                                }
+                            ]
                         }
                     ],
                     "actions": [ "block_action" ],
@@ -35,9 +65,29 @@
                     "priority": 95,
                     "conditions": [
                         {
-                            "field": "path",
-                            "operator": "pattern",
-                            "value": "(?i)'\\s*(or|and)\\s*'"
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "' or '"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "' and '"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "'or'"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "'and'"
+                                }
+                            ]
                         }
                     ],
                     "actions": [ "block_action" ],
@@ -54,9 +104,29 @@
                     "priority": 98,
                     "conditions": [
                         {
-                            "field": "path",
-                            "operator": "pattern",
-                            "value": "(?i)\\b(exec|execute|sp_|xp_)\\w*\\s*\\("
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "exec("
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "execute("
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "sp_"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "xp_"
+                                }
+                            ]
                         }
                     ],
                     "actions": [ "block_action" ],
@@ -73,9 +143,24 @@
                     "priority": 90,
                     "conditions": [
                         {
-                            "field": "path",
-                            "operator": "pattern",
-                            "value": "(?i)(--\\s*$|/\\*.*\\*/)"
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "--"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "/*"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "*/"
+                                }
+                            ]
                         }
                     ],
                     "actions": [ "block_action" ],
@@ -92,9 +177,44 @@
                     "priority": 100,
                     "conditions": [
                         {
-                            "field": "body",
-                            "operator": "pattern",
-                            "value": "(?i)(union\\s+select|drop\\s+table|insert\\s+into|delete\\s+from|update\\s+.*\\s+set|exec\\s*\\(|execute\\s*\\()"
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "body",
+                                    "operator": "contains",
+                                    "value": "union select"
+                                },
+                                {
+                                    "field": "body",
+                                    "operator": "contains",
+                                    "value": "drop table"
+                                },
+                                {
+                                    "field": "body",
+                                    "operator": "contains",
+                                    "value": "insert into"
+                                },
+                                {
+                                    "field": "body",
+                                    "operator": "contains",
+                                    "value": "delete from"
+                                },
+                                {
+                                    "field": "body",
+                                    "operator": "contains",
+                                    "value": "update"
+                                },
+                                {
+                                    "field": "body",
+                                    "operator": "contains",
+                                    "value": "exec("
+                                },
+                                {
+                                    "field": "body",
+                                    "operator": "contains",
+                                    "value": "execute("
+                                }
+                            ]
                         }
                     ],
                     "actions": [ "block_action" ],

@@ -25,8 +25,8 @@
                     "tags": [ "ddos", "rate_limit", "high_volume", "attack" ],
                     "parameters": {
                         "window_seconds": 60,
-                        "max_requests": 100,
-                        "block_duration": 30
+                        "max_requests": 10,
+                        "block_duration": 300
                     }
                 },
                 {
@@ -99,13 +99,38 @@
                             "children": [
                                 {
                                     "field": "path",
-                                    "operator": "pattern",
-                                    "value": "(?i)/(admin|root|sudo|superuser|administrator)"
+                                    "operator": "contains",
+                                    "value": "/admin"
                                 },
                                 {
-                                    "field": "body",
-                                    "operator": "pattern",
-                                    "value": "(?i)(role|permission|privilege).*[=:].*[\"']?(admin|root|superuser)[\"']?"
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "/root"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "/sudo"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "/superuser"
+                                },
+                                {
+                                    "field": "path",
+                                    "operator": "contains",
+                                    "value": "/administrator"
+                                },
+                                {
+                                    "field": "body.role",
+                                    "operator": "in",
+                                    "value": [ "admin", "root", "superuser", "administrator" ]
+                                },
+                                {
+                                    "field": "body.permission",
+                                    "operator": "contains",
+                                    "value": "admin"
                                 }
                             ]
                         }
@@ -127,14 +152,54 @@
                             "logical": "and",
                             "children": [
                                 {
-                                    "field": "path",
-                                    "operator": "pattern",
-                                    "value": "(?i)/(export|download|backup|dump|extract)"
+                                    "logical": "or",
+                                    "children": [
+                                        {
+                                            "field": "path",
+                                            "operator": "contains",
+                                            "value": "/export"
+                                        },
+                                        {
+                                            "field": "path",
+                                            "operator": "contains",
+                                            "value": "/download"
+                                        },
+                                        {
+                                            "field": "path",
+                                            "operator": "contains",
+                                            "value": "/backup"
+                                        },
+                                        {
+                                            "field": "path",
+                                            "operator": "contains",
+                                            "value": "/dump"
+                                        },
+                                        {
+                                            "field": "path",
+                                            "operator": "contains",
+                                            "value": "/extract"
+                                        }
+                                    ]
                                 },
                                 {
-                                    "field": "query_param",
-                                    "operator": "pattern",
-                                    "value": "(?i)(limit|count|size).*[=>].*[0-9]{4,}"
+                                    "logical": "or",
+                                    "children": [
+                                        {
+                                            "field": "query.limit",
+                                            "operator": "gt",
+                                            "value": 1000
+                                        },
+                                        {
+                                            "field": "query.count",
+                                            "operator": "gt",
+                                            "value": 1000
+                                        },
+                                        {
+                                            "field": "query.size",
+                                            "operator": "gt",
+                                            "value": 1000
+                                        }
+                                    ]
                                 }
                             ]
                         }

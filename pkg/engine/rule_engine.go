@@ -71,73 +71,16 @@ func NewRuleEngine(registry *plugins.PluginRegistry, eventBus *events.EventBus, 
 	}
 }
 
-// getDefaultActionRules returns the default action rules
+// getDefaultActionRules returns minimal fallback action rules
 func getDefaultActionRules() []config.ActionRule {
 	return []config.ActionRule{
 		{
-			Name:          "Critical Account Suspension",
-			Description:   "Suspend accounts for critical severity threats",
-			MinSeverity:   9,
-			MinConfidence: 0.9,
-			Actions:       []string{"account_suspend_action"},
-			Priority:      100,
-			Enabled:       true,
-		},
-		{
-			Name:          "High Severity Suspension",
-			Description:   "Temporary suspension for high severity threats",
-			MinSeverity:   8,
-			MinConfidence: 0.8,
-			Actions:       []string{"suspension_action"},
-			Priority:      90,
-			Enabled:       true,
-		},
-		{
-			Name:          "Rate Limit Incremental Block",
-			Description:   "Incremental blocking for rate limit violations",
-			MinSeverity:   1,
-			MinConfidence: 0.8,
-			Actions:       []string{"incremental_block_action"},
-			ThreatTags:    []string{"rate_limit", "ddos"},
-			Priority:      85,
-			Enabled:       true,
-		},
-		{
-			Name:          "Medium Severity Block",
-			Description:   "Block IPs for medium severity threats",
-			MinSeverity:   5,
-			MinConfidence: 0.6,
+			Name:          "Fallback Critical Block",
+			Description:   "Fallback rule for critical threats when no specific rules match",
+			MinSeverity:   10,
+			MinConfidence: 0.95,
 			Actions:       []string{"block_action"},
-			Priority:      80,
-			Enabled:       true,
-		},
-		{
-			Name:          "Low Severity Warning",
-			Description:   "Show warnings for low severity threats",
-			MinSeverity:   3,
-			MinConfidence: 0.3,
-			Actions:       []string{"warning_action"},
-			Priority:      70,
-			Enabled:       true,
-		},
-		{
-			Name:          "SQL Injection Block",
-			Description:   "Block SQL injection attempts regardless of severity",
-			MinSeverity:   1,
-			MinConfidence: 0.7,
-			Actions:       []string{"block_action"},
-			ThreatTags:    []string{"sql_injection"},
-			Priority:      95,
-			Enabled:       true,
-		},
-		{
-			Name:          "XSS Attack Block",
-			Description:   "Block XSS attacks with medium confidence",
-			MinSeverity:   1,
-			MinConfidence: 0.6,
-			Actions:       []string{"block_action"},
-			ThreatTags:    []string{"xss"},
-			Priority:      94,
+			Priority:      1, // Very low priority - only used as fallback
 			Enabled:       true,
 		},
 	}
@@ -163,8 +106,8 @@ func (re *RuleEngine) ProcessRequest(ctx context.Context, reqCtx *plugins.Reques
 	processCtx, cancel := context.WithTimeout(ctx, re.config.RequestTimeout)
 	defer cancel()
 
-	// Check if IP is already blocked
-	if blocked, blockInfo := re.isIPBlocked(processCtx, reqCtx.IP); blocked {
+	// Check if IP is already blocked (endpoint-specific or global)
+	if blocked, blockInfo := re.isIPBlocked(processCtx, reqCtx.IP, reqCtx.Path); blocked {
 		result.Allowed = false
 		result.Actions = append(result.Actions, "block_action")
 
@@ -302,6 +245,7 @@ func (re *RuleEngine) evaluateDetections(detections []plugins.DetectionResult, _
 
 		// Check if rule matches any detection
 		if re.ruleMatches(rule, threatDetections) {
+			log.Debug().Str("rule", rule.Name).Interface("actions", rule.Actions).Msg("Action rule matched")
 			// Add all actions from this rule
 			for _, action := range rule.Actions {
 				// Avoid duplicate actions
@@ -337,19 +281,33 @@ func (re *RuleEngine) ruleMatches(rule config.ActionRule, detections []plugins.D
 
 // detectionMatchesRule checks if a single detection matches a rule
 func (re *RuleEngine) detectionMatchesRule(rule config.ActionRule, detection plugins.DetectionResult) bool {
+	log.Debug().
+		Str("rule", rule.Name).
+		Int("rule_severity", rule.MinSeverity).
+		Float64("rule_confidence", rule.MinConfidence).
+		Interface("rule_tags", rule.ThreatTags).
+		Int("detection_severity", detection.Severity).
+		Float64("detection_confidence", detection.Confidence).
+		Interface("detection_tags", detection.Tags).
+		Msg("Checking rule match")
+
 	// Check severity range
 	if detection.Severity < rule.MinSeverity {
+		log.Debug().Str("rule", rule.Name).Msg("Rule rejected: severity too low")
 		return false
 	}
 	if rule.MaxSeverity > 0 && detection.Severity > rule.MaxSeverity {
+		log.Debug().Str("rule", rule.Name).Msg("Rule rejected: severity too high")
 		return false
 	}
 
 	// Check confidence range
 	if detection.Confidence < rule.MinConfidence {
+		log.Debug().Str("rule", rule.Name).Msg("Rule rejected: confidence too low")
 		return false
 	}
 	if rule.MaxConfidence > 0 && detection.Confidence > rule.MaxConfidence {
+		log.Debug().Str("rule", rule.Name).Msg("Rule rejected: confidence too high")
 		return false
 	}
 
@@ -366,6 +324,7 @@ func (re *RuleEngine) detectionMatchesRule(rule config.ActionRule, detection plu
 					}
 				}
 				if !found {
+					log.Debug().Str("rule", rule.Name).Str("missing_tag", requiredTag).Msg("Rule rejected: required tag missing")
 					return false
 				}
 			}
@@ -384,6 +343,7 @@ func (re *RuleEngine) detectionMatchesRule(rule config.ActionRule, detection plu
 				}
 			}
 			if !found {
+				log.Debug().Str("rule", rule.Name).Interface("required_tags", rule.ThreatTags).Msg("Rule rejected: no matching tags")
 				return false
 			}
 		}
@@ -394,12 +354,14 @@ func (re *RuleEngine) detectionMatchesRule(rule config.ActionRule, detection plu
 		for _, excludeTag := range rule.ExcludeTags {
 			for _, detectionTag := range detection.Tags {
 				if detectionTag == excludeTag {
+					log.Debug().Str("rule", rule.Name).Str("exclude_tag", excludeTag).Msg("Rule rejected: exclude tag found")
 					return false // Exclude this detection
 				}
 			}
 		}
 	}
 
+	log.Debug().Str("rule", rule.Name).Msg("Rule matched!")
 	return true
 }
 
@@ -688,9 +650,21 @@ func (re *RuleEngine) Health() error {
 	return nil
 }
 
-// isIPBlocked checks if an IP is currently blocked
-func (re *RuleEngine) isIPBlocked(ctx context.Context, ip string) (bool, map[string]any) {
-	// Check the store directly for block information
+// isIPBlocked checks if an IP is currently blocked (endpoint-specific or global)
+func (re *RuleEngine) isIPBlocked(ctx context.Context, ip, path string) (bool, map[string]any) {
+	// Try to get the block action plugin to use its endpoint-aware blocking logic
+	if blockAction, exists := re.registry.GetAction("block_action"); exists {
+		// Type assert to get the specific block action interface
+		if ba, ok := blockAction.(interface {
+			IsBlockedForPath(ctx context.Context, ip, path string) (bool, map[string]any, error)
+		}); ok {
+			if blocked, blockInfo, err := ba.IsBlockedForPath(ctx, ip, path); err == nil {
+				return blocked, blockInfo
+			}
+		}
+	}
+
+	// Fallback to direct store check for backward compatibility
 	blockKey := fmt.Sprintf("block:%s", ip)
 	blockInfo, err := re.store.Get(ctx, blockKey)
 	if err != nil {

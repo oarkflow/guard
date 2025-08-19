@@ -130,9 +130,33 @@
                     "priority": 70,
                     "conditions": [
                         {
-                            "field": "body",
-                            "operator": "pattern",
-                            "value": "(?i)(password|passwd|secret|token|api_key|private_key)\\s*[=:]\\s*[\"']?[a-zA-Z0-9+/=]{8,}"
+                            "logical": "or",
+                            "children": [
+                                {
+                                    "field": "body.password",
+                                    "operator": "nnull"
+                                },
+                                {
+                                    "field": "body.passwd",
+                                    "operator": "nnull"
+                                },
+                                {
+                                    "field": "body.secret",
+                                    "operator": "nnull"
+                                },
+                                {
+                                    "field": "body.token",
+                                    "operator": "nnull"
+                                },
+                                {
+                                    "field": "body.api_key",
+                                    "operator": "nnull"
+                                },
+                                {
+                                    "field": "body.private_key",
+                                    "operator": "nnull"
+                                }
+                            ]
                         }
                     ],
                     "actions": [ "warning_action" ],
